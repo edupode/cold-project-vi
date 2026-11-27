@@ -1868,6 +1868,9 @@ namespace VIctoryLauncher
             set("VICTORY_AMBIENT_AIR", "1.5");
             set("VICTORY_AMBIENT_MOST", "2");
             set("VICTORY_NAN_SCRUB", "1");
+            // The sun: an infinite pixel colour held at the largest half instead of 0 (it showed as a black disc).
+            // Only pixel colours: held everywhere (0.3.12) the picture went cyan. White sun, picture normal: edupode, 27/11/2026.
+            set("VICTORY_INF_AS", "65504");
             set("VICTORY_DYNAMIC_SLOTS", "524288");
             set("VICTORY_WAVE_WIDE_DIGESTS", "7099a57fded142613b44f410463d6be6");
             var skip = Path.Combine(SourceDir ?? root, "scripts", "rt_off_hashes.txt");
