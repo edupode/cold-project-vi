@@ -19,6 +19,11 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.13",
+            "  •  Fixes from the NVIDIA fork (VIctory-NVIDIA, thanks to its authors): violet blotches from the ambient light",
+            "     probes, wrong colours in some compressed textures (BC7), descriptors given back to the wrong heap, buffer",
+            "     views reaching past their buffer (a cause of the card stopping), helper threads at the right priority.",
+            "",
             "IN 0.3.12",
             "  •  The sun is no longer a black disc: a colour too bright to hold is kept at the brightest value instead of",
             "     made black. The game translates its shaders again once after this update (Shaders > Prepare, ~5 min).",
@@ -73,6 +78,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.13",
+            "  •  Correcoes do fork NVIDIA (VIctory-NVIDIA, obrigado aos autores): manchas violeta da luz ambiente, cores",
+            "     erradas em algumas texturas comprimidas (BC7), descritores devolvidos ao heap errado, vistas de buffer para",
+            "     la do buffer (uma causa de a placa parar), threads auxiliares na prioridade certa.",
+            "",
             "NA 0.3.12",
             "  •  O sol deixa de ser um disco preto: uma cor demasiado brilhante fica no valor mais brilhante em vez de",
             "     ficar preta. O jogo traduz os shaders de novo uma vez depois deste update (Shaders > Preparar, ~5 min).",
@@ -127,6 +137,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.13",
+            "  •  Correctifs du fork NVIDIA (VIctory-NVIDIA, merci à ses auteurs) : taches violettes de la lumière ambiante,",
+            "     couleurs fausses dans certaines textures compressées (BC7), descripteurs rendus au mauvais tas, vues de",
+            "     tampon débordant de leur tampon (une cause d'arrêt de la carte), threads d'aide à la bonne priorité.",
+            "",
             "DANS LA 0.3.12",
             "  •  Le soleil n'est plus un disque noir : une couleur trop lumineuse est gardée à la valeur la plus claire au lieu",
             "     de devenir noire. Le jeu retraduit ses shaders une fois après cette mise à jour (Shaders > Préparer, ~5 min).",

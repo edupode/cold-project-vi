@@ -1,8 +1,10 @@
-## Julia's Launcher {tag} est sorti ☀️
-**Correctif**
-☀️ **Le soleil n'est plus un disque noir.** Les couleurs trop lumineuses sont gardées à la valeur la plus claire au lieu de devenir noires.
+## Julia's Launcher {tag} est sorti 🔧
+**Correctifs** (du fork NVIDIA, merci à ses auteurs)
+🟣 Fini les taches violettes sur les surfaces éclairées.
+🎨 Couleurs fausses dans certaines textures compressées (BC7) corrigées.
+🛡️ Moins de façons pour la carte de s'arrêter (vues de tampon gardées dans leur tampon, descripteurs rendus au bon tas).
 
-⚠️ **Une fois après la mise à jour :** le jeu retraduit ses shaders. Appuie sur **Shaders > Préparer les shaders** (environ 5 minutes), sinon la première partie saccadera pendant ce temps.
+Pas besoin de préparer les shaders cette fois.
 
 **Installer**
 🔄 En 0.3.x : rien à faire, la mise à jour s'installe seule en 5 minutes, jeu fermé.

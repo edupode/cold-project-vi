@@ -1,8 +1,10 @@
-## Julia's Launcher {tag} is out ☀️
-**Fix**
-☀️ **The sun is no longer a black disc.** Too-bright colours are now held at the brightest value instead of turned black.
+## Julia's Launcher {tag} is out 🔧
+**Fix** (from the NVIDIA fork, thanks to its authors)
+🟣 Violet blotches on lit surfaces are gone.
+🎨 Wrong colours in some compressed textures (BC7) fixed.
+🛡️ Fewer ways for the card to stop (buffer views kept inside their buffer, descriptors back to the right heap).
 
-⚠️ **Once after updating:** the game translates its shaders again. Press **Shaders > Prepare shaders** (about 5 minutes), or the first game will stutter while it does it.
+No shader preparation needed this time.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.
