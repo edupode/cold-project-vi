@@ -1,10 +1,8 @@
 ## Julia's Launcher {tag} est sorti 🔧
-**Correctifs** (du fork NVIDIA, merci à ses auteurs)
-🟣 Fini les taches violettes sur les surfaces éclairées.
-🎨 Couleurs fausses dans certaines textures compressées (BC7) corrigées.
-🛡️ Moins de façons pour la carte de s'arrêter (vues de tampon gardées dans leur tampon, descripteurs rendus au bon tas).
-
-Pas besoin de préparer les shaders cette fois.
+**Correctif**
+🩵 **Fini l'image cyan et sombre.** Le moteur redevient exactement celui de la 0.3.11 (qui marchait chez vous), le temps de trouver quel changement de la 0.3.12/0.3.13 l'a cassée. Désolé.
+✅ Rien à préparer : vos shaders de la 0.3.11 servent à nouveau.
+🚫 « Anti-étirement » est retiré : il cassait l'image.
 
 **Installer**
 🔄 En 0.3.x : rien à faire, la mise à jour s'installe seule en 5 minutes, jeu fermé.

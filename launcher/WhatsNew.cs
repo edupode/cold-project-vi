@@ -19,6 +19,12 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.14",
+            "  •  The picture is back as it was in 0.3.11: since 0.3.12 the whole screen could turn cyan and dark. The engine is",
+            "     0.3.11's again (the black sun and the fixes of 0.3.13 come back once tested). Shaders prepared for 0.3.11 are",
+            "     used again: nothing to prepare.",
+            "  •  'Anti-stretch' is gone: it broke the picture and did not help.",
+            "",
             "IN 0.3.13",
             "  •  Fixes from the NVIDIA fork (VIctory-NVIDIA, thanks to its authors): violet blotches from the ambient light",
             "     probes, wrong colours in some compressed textures (BC7), descriptors given back to the wrong heap, buffer",
@@ -78,6 +84,12 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.14",
+            "  •  A imagem volta a ser a da 0.3.11: desde a 0.3.12 o ecra todo podia ficar verde-azulado e escuro. O motor e",
+            "     de novo o da 0.3.11 (o sol preto e as correcoes da 0.3.13 voltam depois de testadas). Os shaders preparados",
+            "     para a 0.3.11 voltam a ser usados: nada a preparar.",
+            "  •  O 'Anti-esticados' saiu: estragava a imagem e nao ajudava.",
+            "",
             "NA 0.3.13",
             "  •  Correcoes do fork NVIDIA (VIctory-NVIDIA, obrigado aos autores): manchas violeta da luz ambiente, cores",
             "     erradas em algumas texturas comprimidas (BC7), descritores devolvidos ao heap errado, vistas de buffer para",
@@ -137,6 +149,12 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.14",
+            "  •  L'image redevient celle de la 0.3.11 : depuis la 0.3.12 tout l'écran pouvait devenir cyan et sombre. Le moteur",
+            "     est de nouveau celui de la 0.3.11 (le soleil noir et les correctifs de la 0.3.13 reviendront une fois testés).",
+            "     Les shaders préparés pour la 0.3.11 servent à nouveau : rien à préparer.",
+            "  •  'Anti-étirement' a disparu : il cassait l'image sans aider.",
+            "",
             "DANS LA 0.3.13",
             "  •  Correctifs du fork NVIDIA (VIctory-NVIDIA, merci à ses auteurs) : taches violettes de la lumière ambiante,",
             "     couleurs fausses dans certaines textures compressées (BC7), descripteurs rendus au mauvais tas, vues de",

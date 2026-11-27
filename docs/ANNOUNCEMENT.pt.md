@@ -1,10 +1,8 @@
 ## Julia's Launcher {tag} saiu 🔧
-**Correções** (do fork NVIDIA, obrigado aos autores)
-🟣 Acabaram as manchas violeta em superfícies iluminadas.
-🎨 Cores erradas em algumas texturas comprimidas (BC7) corrigidas.
-🛡️ Menos formas de a placa parar (vistas de buffer dentro do buffer, descritores devolvidos ao heap certo).
-
-Desta vez não é preciso preparar os shaders.
+**Correção**
+🩵 **Acabou a imagem verde-azulada e escura.** O motor volta a ser exatamente o da 0.3.11 (que funcionava), enquanto descobrimos que mudança da 0.3.12/0.3.13 a estragou. Desculpem.
+✅ Nada a preparar: os teus shaders da 0.3.11 voltam a ser usados.
+🚫 O "Anti-esticados" saiu: estragava a imagem.
 
 **Instalar**
 🔄 Na 0.3.x: não precisas de fazer nada, instala-se sozinho em 5 minutos com o jogo fechado.

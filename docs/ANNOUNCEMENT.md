@@ -1,10 +1,8 @@
 ## Julia's Launcher {tag} is out 🔧
-**Fix** (from the NVIDIA fork, thanks to its authors)
-🟣 Violet blotches on lit surfaces are gone.
-🎨 Wrong colours in some compressed textures (BC7) fixed.
-🛡️ Fewer ways for the card to stop (buffer views kept inside their buffer, descriptors back to the right heap).
-
-No shader preparation needed this time.
+**Fix**
+🩵 **The cyan, dark picture is gone.** The engine is back to exactly 0.3.11's (that one worked for you), while we find which change of 0.3.12/0.3.13 broke it. Sorry about that.
+✅ Nothing to prepare: your 0.3.11 shaders are used again.
+🚫 "Anti-stretch" is removed: it broke the picture.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.
