@@ -512,6 +512,7 @@ namespace VIctoryLauncher
             reserveBox = T(L("Keep the most video memory", "Guardar o maximo de VRAM"), L("Windows reserves video memory for the game", "O Windows reserva VRAM para o jogo"), 0, 4, true);
             fightsBox = T(L("★ Crowds and fights", "★ Multidoes e lutas"), L("2 GB of the game's buffers on the card", "2 GB dos buffers do jogo na placa"), 1, 0, true);
             qualityBox = T(L("Anti-stretch", "Anti-esticados"), L("Fewer stretched bodies; several FPS slower", "Menos corpos esticados; varios FPS mais lento"), 1, 1, false);
+            qualityBox.Visible = false;
             facesBox = T(L("Rainbow-face fix", "Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 1, 2, false);
             loadingBox = T(L("Fast loading (experimental)", "Carregamento rapido (experimental)"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 1, 3, false);
             warmBox = T(L("Load pipelines before the game", "Carregar pipelines antes do jogo"), L("No stutter the first time you see a place", "Sem engasgos a primeira vez que ves um sitio"), 1, 4, true);
@@ -1564,7 +1565,9 @@ namespace VIctoryLauncher
                 set("VICTORY_WIDE_THREADS", Math.Max(2, Math.Min(12, Environment.ProcessorCount / 2)).ToString());
                 set("VICTORY_ASK_EARLY", "2");
             }
-            if (qualityBox.Checked) { set("VICTORY_RELAY", "1"); set("VICTORY_CARD_STEPS", "0"); }
+            // (Anti-stretch, VICTORY_RELAY=1 + VICTORY_CARD_STEPS=0, is off for everyone: on edupode's RTX 5070 Ti it
+            // turned the whole picture cyan and dark without bringing faces back, and an RTX 4070 player ran at
+            // 2-3 FPS with it, 27/11/2026. The box is hidden; a saved quality=1 is ignored.)
             if (facesBox.Checked) set("VICTORY_TEXTURE_NO_WAIT", "0");
             if (loadingBox.Checked) set("VICTORY_BAKE_NO_WAIT", "1");
             return e;
@@ -1817,7 +1820,7 @@ namespace VIctoryLauncher
                         case "fps60": fps60Box.Checked = v == "1"; break;
                         case "reserve": reserveBox.Checked = v == "1"; break;
                         case "smooth": smoothBox.Checked = v == "1"; break;
-                        case "quality": qualityBox.Checked = v == "1"; break;
+                        case "quality": qualityBox.Checked = false; break;
                         case "faces": facesBox.Checked = v == "1"; break;
                         case "loading": loadingBox.Checked = v == "1"; break;
                         case "fights": fightsBox.Checked = v == "1"; break;
