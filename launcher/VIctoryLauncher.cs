@@ -1570,7 +1570,33 @@ namespace VIctoryLauncher
             // 2-3 FPS with it, 27/11/2026. The box is hidden; a saved quality=1 is ignored.)
             if (facesBox.Checked) set("VICTORY_TEXTURE_NO_WAIT", "0");
             if (loadingBox.Checked) set("VICTORY_BAKE_NO_WAIT", "1");
+            // The F3 panel's "FRAME GEN" line: the driver's frame generation runs outside the emulator.
+            set("VICTORY_PANEL_FRAMEGEN", !smoothBox.Checked ? "OFF" : rtxFrameGen ? "SMOOTH MOTION" : NvSmoothHere ? "NVSMOOTH30" : OwnFrameGen ? "VI 2X" : "OFF");
+            ApplyTestEnv(e);
             return e;
+        }
+
+        // Test switches, for trying an engine change before a release: %LOCALAPPDATA%\VIctory\test-env.txt, one
+        // KEY=VALUE a line (# starts a comment), only VICTORY_* keys; they go over the preset's. Logged at PLAY,
+        // and in the game log's summary, so a report says what was on. Delete the file to go back.
+        void ApplyTestEnv(Dictionary<string, string> e)
+        {
+            try
+            {
+                var file = Path.Combine(Path.GetDirectoryName(dataRoot), "test-env.txt");
+                if (!File.Exists(file)) return;
+                foreach (var raw in File.ReadAllLines(file))
+                {
+                    var line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith("#")) continue;
+                    var i = line.IndexOf('=');
+                    if (i <= 0) continue;
+                    var k = line.Substring(0, i).Trim();
+                    if (!k.StartsWith("VICTORY_") || k == "VICTORY_GAME_DIR" || k == "VICTORY_DATA_DIR") continue;
+                    e[k] = line.Substring(i + 1).Trim();
+                }
+            }
+            catch (Exception) { }
         }
 
         Process Start(string args, string logFile) { return Start(args, logFile, null); }

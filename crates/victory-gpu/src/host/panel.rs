@@ -317,8 +317,29 @@ fn text(c: &[f64; COUNTERS], ms: f64, worst: f64, cost: f64, avg: Averages, host
         format!("MB UP {:.0}  TEXTURES {:.0}  BACK {:.0}", c[7] / 1e6, c[4] / 1e6, c[6] / 1e6),
         format!("RAM {:.1} GB  IN MEMORY {:.1}", gb(private), gb(working)),
         format!("VRAM {:.1}/{:.1} GB  SHARED {:.1}", gb(used), gb(budget), gb(shared)),
+        format!("FRAME GEN {}", frame_gen()),
         format!("THIS PANEL {:.0} US A FRAME", cost),
     ]
+}
+
+/// The frame generation in use, for the panel: what the launcher says
+/// (`VICTORY_PANEL_FRAMEGEN`: the driver's Smooth Motion or NVSmooth30 run
+/// outside the emulator, so only it knows), else VIctory's own
+/// (`VICTORY_FRAMEGEN=1`), else off. Upper case: the panel's font has no
+/// lower-case letters.
+fn frame_gen() -> &'static str {
+    static NAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    NAME.get_or_init(|| {
+        let said = std::env::var("VICTORY_PANEL_FRAMEGEN").unwrap_or_default();
+        let said: String = said.chars().filter(|c| c.is_ascii_alphanumeric() || *c == ' ').take(24).collect();
+        if !said.trim().is_empty() {
+            said.trim().to_ascii_uppercase()
+        } else if crate::switch::on("VICTORY_FRAMEGEN") {
+            "VI 2X".to_owned()
+        } else {
+            "OFF".to_owned()
+        }
+    })
 }
 
 /// The buffers of a box that size and format.
