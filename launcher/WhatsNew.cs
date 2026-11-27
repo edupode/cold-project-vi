@@ -19,6 +19,19 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.16",
+            "  •  The sun is white again: it showed as a black disc in the sky. The rest of the picture stays as it is.",
+            "  •  Pick your frame generation on Play: Automatic, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30)",
+            "     or VIctory 2X (any card, experimental). The F3 panel says which one runs, and no longer cuts its last line.",
+            "  •  When Play is greyed out, the button says why (setup still working, no game chosen, no engine).",
+            "  •  Setup no longer stays 'busy' when one of its steps fails.",
+            "  •  Rust and the C++ Build Tools are no longer asked for when nothing has to be built (they were asked",
+            "     again after an update even when installed). Playing never needs them.",
+            "  •  Shaders are prepared once more (the translator changed for the sun).",
+            "",
+            "IN 0.3.15",
+            "  •  A new look by Cyanexani.",
+            "",
             "IN 0.3.14",
             "  •  The picture is back as it was in 0.3.11: since 0.3.12 the whole screen could turn cyan and dark. The engine is",
             "     0.3.11's again (the black sun and the fixes of 0.3.13 come back once tested). Shaders prepared for 0.3.11 are",
@@ -84,6 +97,19 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.16",
+            "  •  O sol volta a ser branco: aparecia como um disco preto no ceu. O resto da imagem fica como esta.",
+            "  •  Escolhe a geracao de frames em Jogar: Automatico, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30)",
+            "     ou VIctory 2X (qualquer placa, experimental). O painel F3 diz qual corre e ja nao corta a ultima linha.",
+            "  •  Quando Jogar esta cinzento, o botao diz porque (o Preparar ainda a trabalhar, sem jogo, sem motor).",
+            "  •  O Preparar ja nao fica 'ocupado' quando um dos passos falha.",
+            "  •  O Rust e o C++ Build Tools ja nao sao pedidos quando nao ha nada para compilar (eram pedidos outra",
+            "     vez depois de um update, mesmo instalados). Para jogar nunca sao precisos.",
+            "  •  Os shaders sao preparados mais uma vez (o tradutor mudou por causa do sol).",
+            "",
+            "NA 0.3.15",
+            "  •  Um visual novo do Cyanexani.",
+            "",
             "NA 0.3.14",
             "  •  A imagem volta a ser a da 0.3.11: desde a 0.3.12 o ecra todo podia ficar verde-azulado e escuro. O motor e",
             "     de novo o da 0.3.11 (o sol preto e as correcoes da 0.3.13 voltam depois de testadas). Os shaders preparados",
@@ -149,6 +175,19 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.16",
+            "  •  Le soleil est de nouveau blanc : il apparaissait comme un disque noir. Le reste de l'image ne change pas.",
+            "  •  Choisis ta génération d'images dans Jouer : Automatique, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30",
+            "     (RTX 30) ou VIctory 2X (toute carte, expérimental). Le panneau F3 dit laquelle tourne, sans couper sa dernière ligne.",
+            "  •  Quand Jouer est grisé, le bouton dit pourquoi (installation en cours, pas de jeu, pas de moteur).",
+            "  •  L'installation ne reste plus « occupée » quand une de ses étapes échoue.",
+            "  •  Rust et les C++ Build Tools ne sont plus demandés quand rien n'est à compiler (ils l'étaient à nouveau",
+            "     après une mise à jour, même installés). Pour jouer, ils ne sont jamais nécessaires.",
+            "  •  Les shaders sont préparés une fois de plus (le traducteur a changé pour le soleil).",
+            "",
+            "DANS LA 0.3.15",
+            "  •  Une nouvelle apparence signée Cyanexani.",
+            "",
             "DANS LA 0.3.14",
             "  •  L'image redevient celle de la 0.3.11 : depuis la 0.3.12 tout l'écran pouvait devenir cyan et sombre. Le moteur",
             "     est de nouveau celui de la 0.3.11 (le soleil noir et les correctifs de la 0.3.13 reviendront une fois testés).",

@@ -1,5 +1,8 @@
-Julia's Launcher 0.3.15: um visual novo.
+Julia's Launcher 0.3.16: o sol volta a ser branco, e escolhes a tua geração de frames.
 
-- Novo design do Cyanexani: um tema ameixa escuro com um destaque amarelo-manteiga, botões arredondados, uma página Jogar nova (o teu hardware em etiquetas, uma linha "Pronto a jogar", o motor em dois botões, as opções em três colunas com a descrição, o registo de atividade fechado até o abrires) e uma página Hardware e ID nova (cartões em vez de texto, gráficos arredondados, o teu PC em destaque). Todos os botões fazem o mesmo de antes.
-- As atualizações instalam-se com mais segurança: cada ficheiro é verificado outra vez antes de ser instalado, o launcher antigo volta se uma cópia falhar, e uma versão já instalada não é descarregada de novo.
-- Preparar: a barra de progresso já não cai em cima do primeiro passo depois de deslizar a página.
+- O sol volta a aparecer branco em vez de um disco preto no céu. Só as cores que um pixel escreve são seguradas (a tentativa da 0.3.12 segurava tudo e deixou a imagem verde-azulada): testado no jogo, o resto da imagem não muda.
+- Motor de geração de frames na página Jogar: Automático (o melhor da tua placa), NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30, experimental) ou VIctory 2X (qualquer placa, experimental). A linha FRAME GEN do painel F3 diz qual corre, e o painel já não corta a última linha.
+- Quando Jogar está cinzento, o botão diz agora porquê: o Preparar ainda a trabalhar, nenhum jogo escolhido, ou sem motor.
+- O Preparar já não fica ocupado (Jogar cinzento) quando um dos passos falha.
+- O Rust e o C++ Build Tools só são pedidos enquanto um motor ainda tem de ser compilado (o motor AMD do Belobug, antes da primeira compilação): eram pedidos outra vez depois de um update, mesmo instalados. O Rust também é encontrado no CARGO_HOME, e as ferramentas C++ de um Visual Studio em pré-visualização contam. Jogar uma release nunca precisa deles.
+- Os shaders são preparados mais uma vez: o tradutor de shaders mudou por causa do sol.

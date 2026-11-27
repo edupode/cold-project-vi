@@ -1,10 +1,14 @@
-## Julia's Launcher {tag} is out 🎨
-**New look**
-✨ A brand-new design by **Cyanexani**: deep plum with a butter-yellow accent, a new **Play** page (your hardware at a glance, the engine as two buttons, options grouped in three columns) and a new **Hardware & ID** page with cards and charts. Every button still does what it did.
-
+## Julia's Launcher {tag} is out ☀️
 **Fixes**
-🔒 Updates install more safely: each file is checked again right before it goes in, and the old launcher comes back if anything fails.
-🧭 Setup: the progress bar no longer covers the first step after scrolling.
+☀️ The sun is **white** again, no more black disc in the sky. The rest of the picture stays as it was.
+🧰 **Rust and the C++ Build Tools are no longer asked for** when nothing has to be built. Playing never needs them.
+🧭 When **Play** is greyed out, the button now tells you why, and Setup no longer stays stuck "busy" after a failed step.
+📟 The F3 panel no longer cuts its last line.
+
+**New**
+🎞️ Pick your **frame generation** on the Play page: Automatic, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30, experimental) or VIctory 2X (any card, experimental). The F3 panel shows which one runs.
+
+⏳ Shaders get prepared once more after this update (the translator changed for the sun).
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.
