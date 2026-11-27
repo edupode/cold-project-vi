@@ -56,12 +56,28 @@ namespace VIctoryLauncher
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+                // The theme (launcher.ini's theme=) before any window or brush is made.
+                Theme.Use(SavedTheme());
                 Application.Run(new LauncherForm());
             }
             return 0;
         }
 
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
+
+        // launcher.ini's theme= (%LOCALAPPDATA%\VIctory\launcher.ini), read before the form exists.
+        static string SavedTheme()
+        {
+            try
+            {
+                var ini = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VIctory", "launcher.ini");
+                if (File.Exists(ini))
+                    foreach (var line in File.ReadAllLines(ini))
+                        if (line.StartsWith("theme=")) return line.Substring(6).Trim();
+            }
+            catch (Exception) { }
+            return "plum";
+        }
     }
 
     // A preset: render scale and the switches it turns on.
@@ -256,6 +272,8 @@ namespace VIctoryLauncher
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            // The first focus on PLAY: a list lower on the page would take it, and the page would open scrolled down to it.
+            if (playButton != null && playButton.CanFocus) ActiveControl = playButton;
             // PLAY follows the game and the tasks on its own (a game closed, a build done).
             var timer = new System.Windows.Forms.Timer { Interval = 2000 };
             timer.Tick += (s, a) => { if (!setupBusy) Refresh2(); };
@@ -283,8 +301,8 @@ namespace VIctoryLauncher
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            // The PayDrop theme is dark: a dark title bar, tinted plum where Windows 11 allows it.
-            int on = 1;
+            // The title bar follows the theme: dark (or light), tinted with its side colour where Windows 11 allows it.
+            int on = Theme.Dark ? 1 : 0;
             try { if (DwmSetWindowAttribute(Handle, 20, ref on, 4) != 0) DwmSetWindowAttribute(Handle, 19, ref on, 4); } catch (Exception) { }
             int caption = Theme.Side.R | (Theme.Side.G << 8) | (Theme.Side.B << 16);
             try { DwmSetWindowAttribute(Handle, 35, ref caption, 4); } catch (Exception) { }
@@ -379,8 +397,29 @@ namespace VIctoryLauncher
             side.Controls.Add(en); side.Controls.Add(pt); side.Controls.Add(fr);
             var tech = new Label { Text = "D3D12 · SM 6.6", Font = Theme.Mono(8f), ForeColor = Theme.Dim, AutoSize = true, BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
             side.Controls.Add(tech);
+            // The theme picker: one circle per theme; a click saves it (launcher.ini theme=) and opens the launcher again in it.
+            int lang = Fr ? 2 : Pt ? 1 : 0;
+            var themeLabel = new Label { Text = L("Theme", "Tema", "Thème") + " · " + Theme.Label(Theme.Current, lang), Font = Theme.Ui(8.5f), ForeColor = Theme.Muted, AutoSize = true, BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
+            side.Controls.Add(themeLabel);
+            var dots = new List<ThemeDot>();
+            var dotTips = new ToolTip();
+            foreach (var name in Theme.Names)
+            {
+                var n = name;
+                var d = new ThemeDot { ThemeName = n, BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
+                dotTips.SetToolTip(d, Theme.Label(n, lang));
+                d.MouseEnter += (s, e) => themeLabel.Text = L("Theme", "Tema", "Thème") + " · " + Theme.Label(n, lang);
+                d.MouseLeave += (s, e) => themeLabel.Text = L("Theme", "Tema", "Thème") + " · " + Theme.Label(Theme.Current, lang);
+                d.Click += (s, e) => { if (n == Theme.Current) return; WriteSetting("theme", n); SaveSettings(); RestartLauncher(); };
+                dots.Add(d);
+                side.Controls.Add(d);
+            }
             side.Resize += (s, e) => {
-                report.Top = side.Height - 124;
+                themeLabel.Location = new Point(18, side.Height - 152);
+                for (int i = 0; i < dots.Count; i++) dots[i].Location = new Point(14 + i * 37, side.Height - 128);
+            };
+            side.Resize += (s, e) => {
+                report.Top = side.Height - 200;
                 en.Location = new Point(16, side.Height - 80); pt.Location = new Point(79, side.Height - 80); fr.Location = new Point(142, side.Height - 80);
                 tech.Location = new Point((side.Width - tech.Width) / 2, side.Height - 36);
             };
@@ -609,7 +648,9 @@ namespace VIctoryLauncher
             // (Refresh2 and UpdateBanner fill them in). The strip of checks stays as the steps' data, not drawn.
             statusStrip = new StatusStrip();
             banner = new Hero { Location = new Point(0, 0), Size = new Size(2 * X + W, Hero.Rows),
-                Brand = "Julia's Launcher", BrandValue = "v" + Updater.Version,
+                // (The name and the version are in the top bar already: the poster names the page.)
+                Brand = L("Play", "Jogar", "Jouer"), BrandValue = L("Everything the game needs, checked", "Tudo o que o jogo precisa, verificado", "Tout ce qu'il faut au jeu, vérifié"),
+                StepsTitle = L("Ready to play", "Pronto para jogar", "Prêt à jouer"),
                 RightLabel = L("Build", "Versao", "Version"),
                 RightValue = L("Xbox Series, run through VIctory", "Xbox Series, corrida pelo VIctory", "Xbox Series, lancée par VIctory"),
                 Title = L("Ready", "Pronto", "Prêt"), Accent = L("when you are.", "quando quiseres.", "quand tu veux."),
@@ -756,7 +797,7 @@ namespace VIctoryLauncher
             y += 4 * 70 + 14;
             // Which frame generation, when the switch above is on.
             page.Controls.Add(new Label { Text = L("Frame generation engine", "Motor de geracao de frames", "Moteur de génération d'images"), Location = new Point(X, y + 6), AutoSize = true, ForeColor = Theme.Soft, BackColor = Theme.Back, Font = Theme.Ui(9.5f) });
-            fgBox = new ComboBox { Location = new Point(X + 220, y + 2), Width = 340, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
+            fgBox = new Dropdown { Location = new Point(X + 220, y + 2), Width = 340, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
             fgBox.SelectedIndexChanged += (s, e) => PickFg();
             page.Controls.Add(fgBox);
             y += 40;

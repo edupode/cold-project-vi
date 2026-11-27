@@ -756,7 +756,7 @@ namespace VIctoryLauncher
 
             page.Controls.Add(new Heading(L("Engine", "Motor")) { Location = new Point(X, y), Width = W });
             y += 32;
-            engineBox = new ComboBox { Location = new Point(X, y), Width = 420, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
+            engineBox = new Dropdown { Location = new Point(X, y), Width = 420, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
             engineBox.Items.AddRange(new object[] {
                 L("★ edupode (recommended, every card: least video memory, most stable)", "★ edupode (recomendado, todas as placas: menos VRAM, mais estavel)"),
                 L("AMD alternative · VIctory-Belobug-AMD by Belobug", "Alternativa AMD · VIctory-Belobug-AMD do Belobug"),
