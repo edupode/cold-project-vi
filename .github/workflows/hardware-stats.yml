@@ -1,0 +1,48 @@
+name: Hardware averages
+
+# Every 6 hours: the averages of the players' hardware (never a row, never an ID) are read from the
+# hardware database's protected endpoint (server/hardware-worker, GET /v1/stats) and published as
+# docs/hardware-stats.json and docs/HARDWARE-STATS.md on the edupode branch.
+# Needs two repository secrets: VI_STATS_URL (https://<worker>/v1/stats) and VI_STATS_TOKEN (the
+# Worker's STATS_TOKEN). Without them it does nothing. GitHub runs scheduled workflows from the
+# repository's default branch: keep this file there too, or run it by hand (Actions > Run workflow).
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hardware-stats
+  cancel-in-progress: false
+
+jobs:
+  averages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: edupode
+      - name: Read the averages
+        id: read
+        env:
+          URL: ${{ secrets.VI_STATS_URL }}
+          TOKEN: ${{ secrets.VI_STATS_TOKEN }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$TOKEN" ]; then echo "No VI_STATS_URL/VI_STATS_TOKEN secrets: nothing to do."; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          curl -fsS -H "Authorization: Bearer $TOKEN" "$URL" -o docs/hardware-stats.json
+      - name: Write the page
+        if: steps.read.outputs.skip != '1'
+        run: python3 scripts/hardware-stats.py docs/hardware-stats.json docs/HARDWARE-STATS.md
+      - name: Publish
+        if: steps.read.outputs.skip != '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/hardware-stats.json docs/HARDWARE-STATS.md
+          if git diff --cached --quiet; then echo "No change."; exit 0; fi
+          git commit -m "Hardware averages: $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push origin HEAD:edupode
