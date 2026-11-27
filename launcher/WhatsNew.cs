@@ -19,6 +19,10 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.12",
+            "  •  The sun is no longer a black disc: a colour too bright to hold is kept at the brightest value instead of",
+            "     made black. The game translates its shaders again once after this update (Shaders > Prepare, ~5 min).",
+            "",
             "IN 0.3.11",
             "  •  Fewer crashes on 16 GB PCs: when Windows runs out of memory for a moment, VIctory lets go of the",
             "     memory it keeps in reserve and tries again, instead of closing (seen on RX 9070 XT, RX 6600, RTX 4070).",
@@ -69,6 +73,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.12",
+            "  •  O sol deixa de ser um disco preto: uma cor demasiado brilhante fica no valor mais brilhante em vez de",
+            "     ficar preta. O jogo traduz os shaders de novo uma vez depois deste update (Shaders > Preparar, ~5 min).",
+            "",
             "NA 0.3.11",
             "  •  Menos crashes em PCs de 16 GB: quando o Windows fica sem memoria por um momento, o VIctory liberta a",
             "     memoria que guarda de reserva e tenta de novo, em vez de fechar (visto em RX 9070 XT, RX 6600, RTX 4070).",
@@ -119,6 +127,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.12",
+            "  •  Le soleil n'est plus un disque noir : une couleur trop lumineuse est gardée à la valeur la plus claire au lieu",
+            "     de devenir noire. Le jeu retraduit ses shaders une fois après cette mise à jour (Shaders > Préparer, ~5 min).",
+            "",
             "DANS LA 0.3.11",
             "  •  Moins de plantages sur les PC de 16 Go : quand Windows manque de mémoire un instant, VIctory libère la",
             "     mémoire qu'il garde en réserve et réessaie, au lieu de se fermer (vu sur RX 9070 XT, RX 6600, RTX 4070).",

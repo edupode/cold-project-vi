@@ -22,7 +22,7 @@ namespace VIctoryLauncher
     {
         // This launcher's version; a release with a higher one is an update.
         // felicienradio's 0.3.1 with edupode's fixes: above 0.3.1, on edupode's release channel and key.
-        public const string Version = "0.3.11";
+        public const string Version = "0.3.12";
         public const string ManifestUrl = "https://github.com/felicienradio/cold-project-vi/releases/latest/download/manifest.json";
         public const string SignatureUrl = "https://github.com/felicienradio/cold-project-vi/releases/latest/download/manifest.sig";
         public const string DownloadPrefix = "https://github.com/felicienradio/cold-project-vi/releases/download/";

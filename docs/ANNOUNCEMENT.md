@@ -1,10 +1,8 @@
-## Julia's Launcher {tag} is out 🔧
+## Julia's Launcher {tag} is out ☀️
 **Fix**
-🧠 **Fewer crashes on 16 GB PCs.** When Windows is short of memory for a moment, VIctory now frees what it keeps in reserve and tries again instead of closing (it hit RX 9070 XT, RX 6600, RX 6700 XT and RTX 4070 players).
-🟥 Belobug's AMD engine: only on Radeon cards, and at most 1080p (it closed at start at 1440p/4K).
+☀️ **The sun is no longer a black disc.** Too-bright colours are now held at the brightest value instead of turned black.
 
-**New**
-💾 **Save backups before every game.** Hardware & ID > Game saves > **Restore a backup...** brings any of the last 15 back.
+⚠️ **Once after updating:** the game translates its shaders again. Press **Shaders > Prepare shaders** (about 5 minutes), or the first game will stutter while it does it.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.

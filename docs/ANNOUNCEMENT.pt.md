@@ -1,10 +1,8 @@
-## Julia's Launcher {tag} saiu 🔧
-**Correções**
-🧠 **Menos crashes em PCs de 16 GB.** Quando o Windows fica sem memória por um momento, o VIctory liberta o que guarda de reserva e tenta de novo em vez de fechar (RX 9070 XT, RX 6600, RX 6700 XT, RTX 4070).
-🟥 Motor AMD do Belobug: só em placas Radeon, e no máximo a 1080p (fechava ao arrancar a 1440p/4K).
+## Julia's Launcher {tag} saiu ☀️
+**Correção**
+☀️ **O sol já não é um disco preto.** As cores demasiado brilhantes ficam no valor mais brilhante em vez de ficarem pretas.
 
-**Novo**
-💾 **Cópias dos saves antes de cada jogo.** Hardware e ID > Saves do jogo > **Restaurar uma cópia...** traz de volta qualquer uma das últimas 15.
+⚠️ **Uma vez depois de atualizar:** o jogo traduz os shaders de novo. Carrega em **Shaders > Preparar shaders** (cerca de 5 minutos), senão o primeiro jogo engasga enquanto isso acontece.
 
 **Instalar**
 🔄 Na 0.3.x: não precisas de fazer nada, instala-se sozinho em 5 minutos com o jogo fechado.

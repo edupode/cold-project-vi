@@ -12247,15 +12247,22 @@ impl<'a> Lower<'a> {
         if !nan_scrub() {
             return f;
         }
-        // NaN or an infinity (11/26: the whole picture went white at one
+        // NaN: 0. An infinity (11/26: the whole picture went white at one
         // angle with only NaN scrubbed: an infinity through bloom or the
-        // exposure does the same). |f| >= inf, unordered: true for NaN too.
+        // exposure does the same): the largest finite half, sign kept, not 0.
+        // Made 0, the sun's disc (an infinity here) showed as a black disc in
+        // the sky (players' screenshots, 27/11/2026); held at 65504 it stays
+        // the brightest thing on screen and nothing infinite reaches bloom or
+        // the exposure. (A half render target holds no more anyway.)
         let c = self.cur;
-        let a = self.unary(6, f);
-        let inf = self.s.m.f32(0x7f80_0000);
-        let bad = self.s.m.cmp(c, pred::UGE, a, inf);
+        let nan = self.s.m.cmp(c, pred::UNO, f, f);
         let zero = self.s.m.f32(0);
-        self.s.m.select(c, bad, zero, f)
+        let clean = self.s.m.select(c, nan, zero, f);
+        // FMin then FMax (`dx.op.binary` 36, 35): no NaN is left to order.
+        let top = self.s.m.f32(0x477f_e000); // 65504.0
+        let bottom = self.s.m.f32(0xc77f_e000); // -65504.0
+        let below = self.binary(36, clean, top);
+        self.binary(35, below, bottom)
     }
 
     fn export(&mut self, b: usize, i: usize) -> Result<(), Why> {
