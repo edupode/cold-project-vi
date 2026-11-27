@@ -1,4 +1,4 @@
-// The Setup page: everything a first run needs, checked and done for the player. Each step says
+﻿// The Setup page: everything a first run needs, checked and done for the player. Each step says
 // whether it is done and has a button that does it; "Do everything for me" runs the missing ones
 // in order. Steps that change Windows ask for administrator rights (the UAC prompt) or a
 // confirmation first; nothing restarts the PC without a yes.
@@ -17,6 +17,335 @@ using Microsoft.Win32;
 
 namespace VIctoryLauncher
 {
+    // ---------------------------------------------------------------- shared drawing helpers of the Setup,
+    // Shaders, Advanced Tweaks, saves and What's new pages (kept here: Widgets.cs belongs to another file).
+    static class Kit
+    {
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)] static extern int SetWindowTheme(IntPtr hwnd, string app, string list);
+
+        // Dark scroll bars and drop-downs where Windows has them (Windows 10 1809 and later); nothing otherwise.
+        public static void Dark(Control c, string theme)
+        {
+            Action apply = () => { try { SetWindowTheme(c.Handle, theme, null); } catch (Exception) { } };
+            if (c.IsHandleCreated) apply();
+            c.HandleCreated += (s, e) => apply();
+        }
+
+        const TextFormatFlags Wrap = TextFormatFlags.WordBreak | TextFormatFlags.NoPadding | TextFormatFlags.TextBoxControl;
+
+        // The height a wrapped text needs at `width` (a few pixels of slack: a label never cuts its last line).
+        public static int TextH(string text, Font f, int width)
+        {
+            return TextRenderer.MeasureText(text ?? "", f, new Size(Math.Max(20, width), 100000), Wrap).Height + 4;
+        }
+
+        public static int TextW(string text, Font f)
+        {
+            return TextRenderer.MeasureText(text ?? "", f, new Size(100000, 100), TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+        }
+
+        // A button wide enough for its label (Pill shrinks the font when it is not, but fitting is better).
+        public static int PillW(string text, float pt, int min)
+        {
+            using (var f = new Font("Segoe UI", pt)) return Math.Max(min, TextW(text, f) + 40);
+        }
+
+        public static Label Text(string text, Font f, Color color, Color back, int x, int y, int w)
+        {
+            return new Label { Text = text, Font = f, ForeColor = color, BackColor = back, UseMnemonic = false, AutoSize = false, Location = new Point(x, y), Size = new Size(w, TextH(text, f, w)) };
+        }
+
+        // Pills in rows from x, at most maxW wide in all, a new row when one does not fit; returns the y below them.
+        public static int Row(Control parent, int x, int y, int maxW, params Pill[] pills)
+        {
+            int cx = x, rowH = 0;
+            foreach (var p in pills)
+            {
+                int w = Math.Max(p.Width, PillW(p.Text, p.Font.Size, 110));
+                if (cx > x && cx + w > x + maxW) { cx = x; y += rowH + 10; rowH = 0; }
+                p.Location = new Point(cx, y);
+                p.Size = new Size(w, p.Height);
+                parent.Controls.Add(p);
+                cx += w + 10;
+                rowH = Math.Max(rowH, p.Height);
+            }
+            return y + rowH;
+        }
+
+        // `text` cut with "..." so it fits `width` pixels in `f` (the loading bars draw their text without a limit).
+        public static string Clip(string text, Font f, int width)
+        {
+            text = text ?? "";
+            if (TextW(text, f) <= width) return text;
+            int lo = 0, hi = text.Length;
+            while (lo < hi)
+            {
+                int mid = (lo + hi + 1) / 2;
+                if (TextW(text.Substring(0, mid) + "...", f) <= width) lo = mid; else hi = mid - 1;
+            }
+            return text.Substring(0, lo).TrimEnd() + "...";
+        }
+
+        // A one-line text field on a rounded inset (a plain TextBox draws a stock square frame).
+        public static RoundCard Field(Control parent, TextBox tb, int x, int y, int w) { return Field(parent, tb, x, y, w, 36); }
+
+        public static RoundCard Field(Control parent, TextBox tb, int x, int y, int w, int h)
+        {
+            tb.BorderStyle = BorderStyle.None;
+            var card = new RoundCard { Location = new Point(x, y), Size = new Size(w, h), BackColor = Theme.Back, Edge = Theme.Line, Radius = 10 };
+            tb.BackColor = card.BackColor;
+            tb.Width = w - 28;
+            if (tb.Multiline) { tb.Size = new Size(w - 28, h - 20); tb.Location = new Point(14, 10); Dark(tb, "DarkMode_Explorer"); }
+            else tb.Location = new Point(14, (card.Height - tb.Height) / 2);
+            tb.GotFocus += (s, e) => { card.Edge = Theme.Cyan; card.Invalidate(); };
+            tb.LostFocus += (s, e) => { card.Edge = Theme.Line; card.Invalidate(); };
+            card.Click += (s, e) => tb.Focus();
+            card.Controls.Add(tb);
+            parent.Controls.Add(card);
+            return card;
+        }
+    }
+
+    // A rounded card: `BackColor` is its fill (controls on it clear with it), the corners show the parent's colour.
+    class RoundCard : Panel
+    {
+        public Color Edge = Theme.Rule;
+        public float Radius = 10;
+        // Flat: no fill and no frame, only a hairline above and below (its parent's colour behind).
+        public bool Flat;
+        public RoundCard()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = Theme.Card;
+        }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Parent != null ? Parent.BackColor : Theme.Back);
+            Theme.Smooth(g);
+            if (Flat)
+            {
+                using (var b = new SolidBrush(Theme.Rule)) { g.FillRectangle(b, 0, 0, Width, 1); g.FillRectangle(b, 0, Height - 1, Width, 1); }
+                return;
+            }
+            Theme.Panel(g, new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f), BackColor, Edge, Radius);
+        }
+    }
+
+
+    // The thin line the setup nodes sit on: a hairline, and a butter line that grows down it (eased) as the steps are done.
+    class TimelineLine : Control
+    {
+        readonly Mix fill;
+        public TimelineLine()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            fill = new Mix(this);
+        }
+        public void SetFill(float px) { fill.To(px, 520); }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Parent != null ? Parent.BackColor : Theme.Back);
+            using (var b = new SolidBrush(Theme.Line)) g.FillRectangle(b, 1, 0, 1, Height);
+            if (!fill.Running && fill.V > Height) fill.Set(Height);
+            float h = Math.Min(Height, fill.V);
+            if (h > 0.5f) using (var b = new SolidBrush(Theme.Good)) g.FillRectangle(b, 0, 0, 3, h);
+        }
+    }
+    // A status as a drawn mark: a round badge (done, to do, running, not needed, failed) or a small pill with a word.
+    // Kind: 0 to do, 1 done, 2 running, 3 not needed, 4 checking, 5 failed.
+    class StatusMark : Control
+    {
+        public int Kind = 4;
+        public bool Round = true, Node, Flat;
+        public string Number = "";
+        readonly Mix fill, burst;
+        bool pulseReg;
+        float pulse = -1f;
+        public StatusMark()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            Size = new Size(30, 30);
+            Font = Theme.UiBold(8f);
+            fill = new Mix(this); burst = new Mix(this);
+        }
+        // A node: the disc fills from its middle when the step is done (with one ring sent out), and a running one pulses.
+        public void Set(int kind, string text)
+        {
+            bool wasDone = Kind == 1;
+            Kind = kind; Text = text;
+            if (Node)
+            {
+                fill.To(kind == 1 ? 1f : 0f, 380);
+                if (kind == 1 && !wasDone) { burst.Set(0f); burst.To(1f, 750); }
+                if (kind == 2 && !pulseReg) { pulseReg = true; Anim.Register(this, false, Pulse); }
+                else if (pulseReg) Anim.Poke(this);
+            }
+            Invalidate();
+        }
+        int Pulse(double t)
+        {
+            if (Kind != 2) { if (pulse >= 0f) { pulse = -1f; Invalidate(); } return 4000; }
+            pulse = (float)(0.5 + 0.5 * Math.Sin(t * 2 * Math.PI / 1.5));
+            Invalidate();
+            return 66;
+        }
+        public static Color ColorOf(int kind) { return kind == 1 ? Theme.Good : kind == 0 ? Theme.Warn : kind == 2 ? Theme.Cyan : kind == 5 ? Theme.Bad : Theme.Dim; }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Parent != null ? Parent.BackColor : Theme.Back);
+            Theme.Smooth(g);
+            var c = ColorOf(Kind);
+            if (Node)
+            {
+                // A milestone node: the step's number in a ring (a filled butter disc when done).
+                float nd = Math.Min(Width, Height) - 2;
+                var nb = new RectangleF((Width - nd) / 2f, (Height - nd) / 2f, nd, nd);
+                if (!fill.Running) fill.Set(Kind == 1 ? 1f : 0f);
+                float fv = fill.V;
+                if (Kind == 2 && pulse >= 0f)
+                    using (var b = new SolidBrush(Color.FromArgb((int)(18 + 52 * pulse), c))) g.FillEllipse(b, nb);
+                if (fv < 0.999f)
+                {
+                    using (var b = new SolidBrush(Kind == 2 && pulse >= 0f ? Fx.Lerp(Theme.Back, Theme.Plum, pulse * 0.6f) : Theme.Back)) g.FillEllipse(b, nb.X + 2, nb.Y + 2, nd - 4, nd - 4);
+                    using (var p = new Pen(c, Kind == 2 ? 2f + 0.8f * Math.Max(0f, pulse) : 1.5f)) g.DrawEllipse(p, nb.X + 1, nb.Y + 1, nd - 2, nd - 2);
+                }
+                if (fv > 0.01f)
+                {
+                    float dd = nd * Fx.Out(fv);
+                    using (var b = new SolidBrush(Theme.Good)) g.FillEllipse(b, nb.X + (nd - dd) / 2f, nb.Y + (nd - dd) / 2f, dd, dd);
+                }
+                if (burst.Running)
+                {
+                    float bk = burst.V, bd = nd * (0.8f + 0.2f * bk);
+                    using (var p = new Pen(Fx.Alpha(Theme.Good, 1f - bk), 2.5f)) g.DrawEllipse(p, nb.X + (nd - bd) / 2f, nb.Y + (nd - bd) / 2f, bd, bd);
+                }
+                using (var f = Theme.UiBold(8f))
+                using (var b = new SolidBrush(Fx.Lerp(c, Theme.OnAccent, fv)))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap })
+                    g.DrawString(Number ?? "", f, b, nb, sf);
+                return;
+            }
+            if (Flat)
+            {
+                // Just the word, in the state's colour.
+                using (var b = new SolidBrush(c))
+                using (var f = Theme.UiBold(8.5f))
+                using (var sf = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap, Trimming = StringTrimming.EllipsisCharacter })
+                    g.DrawString(Text ?? "", f, b, new RectangleF(0, 0, Width, Height), sf);
+                return;
+            }
+            if (!Round)
+            {
+                var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+                Theme.Panel(g, r, Color.FromArgb(Kind == 1 || Kind == 2 ? 40 : 28, c), Color.FromArgb(Kind == 3 || Kind == 4 ? 70 : 130, c), r.Height / 2f);
+                using (var b = new SolidBrush(c))
+                using (var f = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap, Trimming = StringTrimming.EllipsisCharacter })
+                    g.DrawString(Text ?? "", Font, b, r, f);
+                return;
+            }
+            float d = Math.Min(Width, Height) - 2;
+            var box = new RectangleF((Width - d) / 2f, (Height - d) / 2f, d, d);
+            float cx = box.X + d / 2, cy = box.Y + d / 2, u = d / 30f;
+            if (Kind == 1)
+            {
+                using (var b = new SolidBrush(c)) g.FillEllipse(b, box);
+                using (var p = new Pen(Theme.OnAccent, Math.Max(1.6f, 2.4f * u)) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round, LineJoin = System.Drawing.Drawing2D.LineJoin.Round })
+                    g.DrawLines(p, new[] { new PointF(cx - 6 * u, cy + 0.5f * u), new PointF(cx - 1.5f * u, cy + 5 * u), new PointF(cx + 6.5f * u, cy - 5 * u) });
+                return;
+            }
+            using (var p = new Pen(c, Math.Max(1.4f, 1.8f * u))) g.DrawEllipse(p, box.X + 1, box.Y + 1, d - 2, d - 2);
+            using (var p = new Pen(c, Math.Max(1.4f, 2.2f * u)) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round })
+            using (var b = new SolidBrush(c))
+            {
+                if (Kind == 0) { g.DrawLine(p, cx, cy - 6 * u, cx, cy + 1 * u); g.FillEllipse(b, cx - 1.6f * u, cy + 4.5f * u, 3.2f * u, 3.2f * u); }
+                else if (Kind == 5) { g.DrawLine(p, cx - 4.5f * u, cy - 4.5f * u, cx + 4.5f * u, cy + 4.5f * u); g.DrawLine(p, cx - 4.5f * u, cy + 4.5f * u, cx + 4.5f * u, cy - 4.5f * u); }
+                else if (Kind == 2) { for (int i = -1; i <= 1; i++) g.FillEllipse(b, cx + i * 6 * u - 1.8f * u, cy - 1.8f * u, 3.6f * u, 3.6f * u); }
+                else g.DrawLine(p, cx - 4 * u, cy, cx + 4 * u, cy);
+            }
+        }
+    }
+
+    // A drop-down in the theme: a rounded face, a chevron, themed list items (a stock ComboBox is grey or white).
+    class Dropdown : ComboBox
+    {
+        bool hover;
+        // The height of the closed face (what Windows gives an owner-drawn list: the item and its frame).
+        public int Face { get { return ItemHeight + 6; } }
+        public Dropdown()
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList;
+            FlatStyle = FlatStyle.Flat;
+            DrawMode = DrawMode.OwnerDrawFixed;
+            ItemHeight = 24;
+            BackColor = Theme.Card;
+            ForeColor = Theme.Text;
+            Font = Theme.Ui(9.5f);
+            Kit.Dark(this, "DarkMode_CFD");
+        }
+        protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hover = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnDrawItem(DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+            bool face = (e.State & DrawItemState.ComboBoxEdit) != 0;
+            bool sel = !face && (e.State & DrawItemState.Selected) != 0;
+            using (var b = new SolidBrush(sel ? Theme.Selected : Theme.Card)) e.Graphics.FillRectangle(b, e.Bounds);
+            var r = new Rectangle(e.Bounds.X + 10, e.Bounds.Y, e.Bounds.Width - 14, e.Bounds.Height);
+            TextRenderer.DrawText(e.Graphics, GetItemText(Items[e.Index]), Font, r, sel ? Theme.Cyan : Theme.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        }
+        // Drawn over what Windows painted: the face with its rounded border and chevron.
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            if (m.Msg != 0xF || Width < 30 || Height < 10) return;
+            try
+            {
+                using (var g = Graphics.FromHwnd(Handle))
+                {
+                    g.Clear(Parent != null ? Parent.BackColor : Theme.Back);
+                    Theme.Smooth(g);
+                    var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
+                    Theme.Panel(g, r, Enabled ? (hover || DroppedDown ? Theme.CardHover : Theme.Card) : Theme.Back, DroppedDown ? Theme.Cyan : hover ? Theme.LineStrong : Theme.Line, 10);
+                    var text = SelectedIndex >= 0 ? GetItemText(SelectedItem) : "";
+                    TextRenderer.DrawText(g, text, Font, new Rectangle(12, 0, Width - 38, Height), Enabled ? Theme.Text : Theme.Dim, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+                    float cx = Width - 18, cy = Height / 2f;
+                    using (var p = new Pen(Enabled ? Theme.Cyan : Theme.Dim, 1.8f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round })
+                        g.DrawLines(p, new[] { new PointF(cx - 4, cy - 2), new PointF(cx, cy + 2), new PointF(cx + 4, cy - 2) });
+                }
+            }
+            catch (Exception) { }
+        }
+    }
+
+    // A list in the theme (the backups): rounded selection, no stock frame.
+    class ThemedList : ListBox
+    {
+        public ThemedList()
+        {
+            DrawMode = DrawMode.OwnerDrawFixed;
+            ItemHeight = 32;
+            BorderStyle = BorderStyle.None;
+            BackColor = Theme.Card;
+            ForeColor = Theme.Text;
+            Font = Theme.Ui(9.5f);
+            IntegralHeight = false;
+            Kit.Dark(this, "DarkMode_Explorer");
+        }
+        protected override void OnDrawItem(DrawItemEventArgs e)
+        {
+            var g = e.Graphics;
+            using (var b = new SolidBrush(BackColor)) g.FillRectangle(b, e.Bounds);
+            if (e.Index < 0) return;
+            bool sel = (e.State & DrawItemState.Selected) != 0;
+            Theme.Smooth(g);
+            if (sel) Theme.Panel(g, new RectangleF(e.Bounds.X + 2, e.Bounds.Y + 2, e.Bounds.Width - 5, e.Bounds.Height - 5), Theme.Selected, Theme.Selected, 8);
+            TextRenderer.DrawText(g, GetItemText(Items[e.Index]), Font, new Rectangle(e.Bounds.X + 12, e.Bounds.Y, e.Bounds.Width - 20, e.Bounds.Height), sel ? Theme.Cyan : Theme.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        }
+    }
+
     partial class LauncherForm
     {
         // 1: done, 0: to do, -1: not known (or nothing to do here).
@@ -27,9 +356,11 @@ namespace VIctoryLauncher
             public Func<bool> Fix;        // runs on a worker thread; true if it did its part
             public bool Auto = true;      // part of "Do everything for me"
             public Func<bool> Applies;    // null: every PC; false: not for this one (another card maker)
-            public Label Mark, Text, Detail;
+            public StatusMark Badge, Chip;
+            public int NodeY;
+            public Label Text, Detail;
             public Pill Button;
-            public int State = -1;
+            public int State = -2;       // -2: not checked yet
         }
 
         readonly List<Step> steps = new List<Step>();
@@ -54,42 +385,108 @@ namespace VIctoryLauncher
         }
 
         // ---------------------------------------------------------------- page
+        // A poster head, then the steps as a vertical milestone timeline: a thin line, numbered nodes (their
+        // colour is the step's state), the step's title and a muted line, the action as a small ghost pill.
         Panel SetupPage()
         {
             var page = Page();
-            const int X = 24, W = 852;
-            int y = 20;
-            page.Controls.Add(new Heading(L("Setup: everything done for you", "Preparar: tudo feito por ti")) { Location = new Point(X, y), Width = W });
-            y += 32;
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W - 250, 40), ForeColor = Theme.Dim, BackColor = Theme.Back,
-                Text = L("Each step checks your PC. Press its button, or 'Do everything for me' to run the missing ones in order. Windows asks before anything that needs administrator rights.",
-                         "Cada passo verifica o teu PC. Carrega no botao dele, ou em 'Fazer tudo por mim' para correr os que faltam por ordem. O Windows pergunta antes de tudo o que precisa de administrador.") });
-            everything = new Pill { Main = true, Text = L("Do everything for me", "Fazer tudo por mim"), Location = new Point(X + W - 236, y), Size = new Size(236, 44), Font = new Font("Segoe UI Semibold", 11f) };
+            const int X = 40, W = 900;
+
+            var introText = L("Each step checks your PC. Press its button, or 'Do everything for me' to run the missing ones in order. Windows asks before anything that needs administrator rights.",
+                              "Cada passo verifica o teu PC. Carrega no botao dele, ou em 'Fazer tudo por mim' para correr os que faltam por ordem. O Windows pergunta antes de tudo o que precisa de administrador.",
+                              "Chaque étape vérifie ton PC. Appuie sur son bouton, ou sur 'Tout faire pour moi' pour lancer celles qui manquent dans l'ordre. Windows demande avant tout ce qui exige les droits administrateur.");
+            var everyText = L("Do everything for me", "Fazer tudo por mim", "Tout faire pour moi") + "  →";
+            everyW = Kit.PillW(everyText, 11f, 230);
+            setupHead = Head(L("Setup", "Preparar", "Préparer"), L("Setup", "Preparar", "Préparer"), L("done for you.", "feito por ti.", "fait pour toi."), introText);
+            setupHead.RightLabel = L("Progress", "Progresso", "Avancement");
+            setupHead.RightValue = L("Checking your PC...", "A verificar o teu PC...", "Vérification de ton PC...");
+            everything = new Pill { Main = true, Text = everyText, Font = new Font("Segoe UI Semibold", 11f), Size = new Size(everyW, 46) };
             everything.Click += (s, e) => DoEverything();
-            page.Controls.Add(everything);
-            y += 52;
-            setupBar = new LoadBar { Location = new Point(X, y), Size = new Size(W, 26), Visible = false };
+            setupHead.Controls.Add(everything);
+            Action placeEvery = () => everything.Location = new Point(Math.Max(40, setupHead.Width - 40 - everyW), 84);
+            setupHead.Resize += (s, e) => placeEvery();
+            placeEvery();
+            page.Controls.Add(setupHead);
+            setupAnchor = setupHead;
+            int y = setupHead.Height + 8;
+
+            // The progress bar (hidden until a step runs; Progress() places it again from setupAnchor).
+            setupBar = new LoadBar { Location = new Point(X, y), Size = new Size(W, 30), Visible = false };
             page.Controls.Add(setupBar);
-            y += 34;
+            y += 44;
 
             DefineSteps();
+            var stepFont = Theme.Ui(9f);
+            var titleFont = Theme.UiBold(10.5f);
+            // One button width for every step, from the longest label (so the column lines up).
+            int bw = 110;
+            foreach (var st in steps) bw = Math.Max(bw, Kit.PillW(st.FixText, 9f, 110));
+            bw = Math.Min(bw, 190);
+            int textX = X + 56, textW = W - 56 - bw - 28;
+            // The status word is as wide as its longest.
+            int chipTextW = 0;
+            using (var chipFont = Theme.UiBold(8.5f))
+                foreach (var word in new[] { L("Not needed", "Nao preciso", "Inutile"), L("Checking...", "A verificar...", "Vérification..."), L("Not done", "Nao feito", "Pas fait"), L("Running", "A correr", "En cours"), L("To do", "Por fazer", "À faire"), L("Done", "Feito", "Fait") })
+                    chipTextW = Math.Max(chipTextW, Kit.TextW(word, chipFont));
+            int firstY = y, number = 0, lastNodeY = y;
             foreach (var st in steps)
             {
-                var card = new Panel { Location = new Point(X, y), Size = new Size(W, 58), BackColor = Theme.Card };
-                st.Mark = new Label { Location = new Point(12, 14), Size = new Size(30, 30), Font = new Font("Segoe UI Semibold", 15f), ForeColor = Theme.Dim, BackColor = Theme.Card, Text = "•" };
-                st.Text = new Label { Location = new Point(48, 8), Size = new Size(W - 260, 22), Font = new Font("Segoe UI Semibold", 10.5f), ForeColor = Theme.Text, BackColor = Theme.Card, Text = st.Title };
-                st.Detail = new Label { Location = new Point(48, 31), Size = new Size(W - 260, 20), ForeColor = Theme.Dim, BackColor = Theme.Card, Text = st.Why, AutoEllipsis = true };
-                st.Button = new Pill { Text = st.FixText, Location = new Point(W - 196, 12), Size = new Size(184, 34), BackColor = Theme.Card };
+                number++;
+                // The title, then the status word right after it (at the end of the line when the title is long).
+                int titleW = Kit.TextW(st.Title, titleFont) + 6;
+                int chipW = chipTextW + 14;
+                int titleLabelW = Math.Min(titleW, textW - chipW - 6);
+                int titleH = Kit.TextH(st.Title, titleFont, titleLabelW);
+                int detailH = Kit.TextH(st.Why, stepFont, textW);
+                int rowH = Math.Max(62, 2 + Math.Max(titleH, 22) + 2 + detailH + 16);
+                st.Badge = new StatusMark { Node = true, Number = number.ToString("00"), Location = new Point(X, y), Size = new Size(30, 30), Kind = 4 };
+                st.Text = Kit.Text(st.Title, titleFont, Theme.Text, Theme.Back, textX, y + 2, titleLabelW);
+                st.Chip = new StatusMark { Flat = true, Round = false, Kind = 4, Size = new Size(chipW, 22), Location = new Point(textX + titleLabelW + 6, y + 3), Text = L("Checking...", "A verificar...", "Vérification...") };
+                st.Detail = Kit.Text(st.Why, stepFont, Theme.Muted, Theme.Back, textX, y + 2 + Math.Max(titleH, 22) + 2, textW);
+                st.Button = new Pill { Text = st.FixText, Font = Theme.Ui(9f), Size = new Size(bw, 30) };
+                st.Button.Location = new Point(X + W - bw, y);
                 var me = st;
                 st.Button.Click += (s, e) => RunSteps(new[] { me });
-                card.Controls.Add(st.Mark); card.Controls.Add(st.Text); card.Controls.Add(st.Detail); card.Controls.Add(st.Button);
-                var tips = new ToolTip { AutoPopDelay = 20000 };
-                tips.SetToolTip(st.Detail, st.Why);
-                page.Controls.Add(card);
-                y += 64;
+                page.Controls.Add(st.Badge); page.Controls.Add(st.Text); page.Controls.Add(st.Chip); page.Controls.Add(st.Detail); page.Controls.Add(st.Button);
+                lastNodeY = y; st.NodeY = y;
+                y += rowH;
             }
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(10, 10), BackColor = Theme.Back });
+            // The thin line the nodes sit on, behind them.
+            timelineFirstY = firstY;
+            tline = new TimelineLine { Location = new Point(X + 14, firstY + 15), Size = new Size(3, Math.Max(1, lastNodeY - firstY)) };
+            var line = tline;
+            page.Controls.Add(line);
+            line.SendToBack();
+            ShowSummary();
+            page.Controls.Add(new Label { Location = new Point(X, y + 8), Size = new Size(10, 14), BackColor = Theme.Back });
             return page;
+        }
+
+        int everyW = 236, timelineFirstY;
+        TimelineLine tline;
+        PageHead setupHead;
+        // The head: always shown, so the progress bar is placed from it.
+        Control setupAnchor;
+
+        // "3 of 9 ready" over the steps this PC needs (on the head's right, under "Progress").
+        void ShowSummary()
+        {
+            if (setupHead == null) return;
+            int known = steps.Count(s => s.State != -1 && s.State != -2), ready = steps.Count(s => s.State == 1);
+            setupHead.RightValue = known == 0
+                ? L("Checking your PC...", "A verificar o teu PC...", "Vérification de ton PC...")
+                : ready == known
+                    ? L("Everything is ready.", "Esta tudo pronto.", "Tout est prêt.")
+                    : string.Format(L("{0} of {1} ready", "{0} de {1} prontos", "{0} sur {1} prêts"), ready, known);
+            setupHead.RightColor = known > 0 && ready == known ? Theme.Good : Theme.Cyan;
+            // The line down the nodes fills as far as the steps are done in a row (a step this PC does not need passes).
+            if (tline != null)
+            {
+                int last = -1;
+                for (int i = 0; i < steps.Count; i++) { int sv = steps[i].State; if (sv == 1 || sv == -1) last = i; else break; }
+                tline.SetFill(last >= 0 ? steps[last].NodeY - timelineFirstY : 0);
+            }
+            setupHead.Invalidate();
         }
 
         void DefineSteps()
@@ -219,18 +616,37 @@ namespace VIctoryLauncher
                     int s;
                     try { s = st.Check(); } catch (Exception) { s = -1; }
                     var me = st;
-                    BeginInvoke(new Action(() => PaintStep(me, s)));
+                    Post(() => PaintStep(me, s));
                 }
             }) { IsBackground = true }.Start();
         }
 
         void PaintStep(Step st, int state)
         {
+            PaintStep(st, state, false);
+        }
+
+        // A step's badge, status word and button: done / to do / failed (it was tried and still is not) / not needed / running.
+        void PaintStep(Step st, int state, bool failed)
+        {
             st.State = state;
-            st.Mark.Text = state == 1 ? "✓" : state == 0 ? "✗" : "•";
-            st.Mark.ForeColor = state == 1 ? Theme.Good : state == 0 ? Theme.Warn : Theme.Dim;
+            int kind = state == 1 ? 1 : state == 0 ? (failed ? 5 : 0) : 3;
+            string word = kind == 1 ? L("Done", "Feito", "Fait") : kind == 5 ? L("Not done", "Nao feito", "Pas fait") : kind == 0 ? L("To do", "Por fazer", "À faire") : L("Not needed", "Nao preciso", "Inutile");
+            st.Badge.Set(kind, word);
+            st.Chip.Set(kind, word);
+            // The step still to do gets the accent button; a finished one a quiet outline.
+            st.Button.Main = false;
             st.Button.Enabled = !setupBusy;
             st.Button.Invalidate();
+            ShowSummary();
+        }
+
+        // The step being worked on.
+        void MarkRunning(Step st)
+        {
+            var word = L("Running", "A correr", "En cours");
+            st.Badge.Set(2, word);
+            st.Chip.Set(2, word);
         }
 
         void DoEverything()
@@ -254,13 +670,15 @@ namespace VIctoryLauncher
                     var me = st;
                     int now;
                     try { now = st.Check(); } catch (Exception) { now = -1; }
-                    if (now == 1 && which.Length > 1) { BeginInvoke(new Action(() => PaintStep(me, 1))); continue; }
+                    if (now == 1 && which.Length > 1) { Post(() => PaintStep(me, 1)); continue; }
+                    if (ClosingNow()) break; // the window is closing: no further step starts
                     Progress(string.Format("{0} ({1}/{2})...", st.Title, i, which.Length), (float)(i - 1) / which.Length);
-                    BeginInvoke(new Action(() => { me.Mark.Text = "…"; me.Mark.ForeColor = Theme.Cyan; }));
+                    Post(() => MarkRunning(me));
                     bool ok;
                     try { ok = st.Fix(); } catch (Exception e) { ok = false; Log(st.Title + ": " + e.Message); }
                     try { now = st.Check(); } catch (Exception) { now = -1; }
-                    BeginInvoke(new Action(() => PaintStep(me, now)));
+                    bool tried = ok;
+                    Post(() => PaintStep(me, now, !tried));
                     Log((now == 1 ? "✓ " : ok ? "• " : "✗ ") + st.Title);
                     // Nothing after a build can work without it.
                     if (now == 0 && st.Fix == (Func<bool>)BuildBlocking && which.Length > 1) break;
@@ -268,13 +686,13 @@ namespace VIctoryLauncher
                 Progress(L("Done.", "Feito."), 1f);
                 Thread.Sleep(800);
                 setupBusy = false;
-                BeginInvoke(new Action(() => {
+                Post(() => {
                     setupBar.Visible = false;
                     if (loadBar != null) loadBar.Visible = false;
                     everything.Enabled = true; everything.Invalidate();
                     foreach (var st in steps) { st.Button.Enabled = true; st.Button.Invalidate(); }
                     Refresh2();
-                }));
+                });
             }) { IsBackground = true }.Start();
         }
 
@@ -283,11 +701,18 @@ namespace VIctoryLauncher
         // Both bars (Setup page and Play page) show the same work; the Shaders page mirrors them.
         void Progress(string text, float part)
         {
-            if (InvokeRequired) { BeginInvoke(new Action<string, float>(Progress), text, part); return; }
+            if (InvokeRequired) { try { if (!IsDisposed) BeginInvoke(new Action<string, float>(Progress), text, part); } catch (Exception) { } return; }
             setupProgress = part;
+            // A hidden control is not moved when its page scrolls: placed again from a control that is
+            // always shown before it appears, or it lands on top of the first step after a scroll.
+            if (setupBar != null && setupAnchor != null && !setupBar.Visible) setupBar.Top = setupAnchor.Top + setupAnchor.Height + 10;
+            if (loadBar != null && loadBarAnchor != null && !loadBar.Visible) loadBar.Top = loadBarAnchor.Top + 42;
             foreach (var bar in new[] { setupBar, loadBar })
-                if (bar != null) { bar.Visible = true; bar.Set(part, text); }
+                if (bar != null) { bar.Visible = true; bar.Set(part, Kit.Clip(text, bar.Font, Math.Max(80, bar.Width - 70))); }
         }
+
+        // The Play page's "Show activity" button, which the loading bar and the log sit under.
+        Control loadBarAnchor;
 
         // ---------------------------------------------------------------- the steps' work
         bool Winget(string id, string overrideArgs)
@@ -445,6 +870,10 @@ namespace VIctoryLauncher
             Invoke(new Action(() => { SaveSettings(); dir = gameBox.Text.Trim(); game = GameExe; }));
             if (VictoryExe == null || !File.Exists(game)) { Log(L("Build VIctory and choose the game folder first.", "Compila o VIctory e escolhe a pasta do jogo primeiro.")); return false; }
             if (!RoomForCache()) return false;
+            // Another preparation (left by a launcher window that closed) on the same cache: stopped first, if the player says so.
+            bool go = true;
+            Invoke(new Action(() => { go = ClearOtherPreparations(); }));
+            if (!go) return false;
             var log = Path.Combine(dataRoot, "logs", "prepare.log");
             long mark = 0;
             try { if (File.Exists(log)) mark = new FileInfo(log).Length; } catch (Exception) { }
@@ -487,6 +916,7 @@ namespace VIctoryLauncher
                 TellErrors(log, mark);
                 return false;
             }
+            if (ClosingNow()) return false; // the window is closing: the pipelines are not started
             Progress(L("Preparing pipelines...", "A preparar pipelines..."), 0.6f);
             var w = Start("warm --used", log, line => {
                 var m = Regex.Match(line, @"^(\d+) of (\d+), (\d+) s");
@@ -757,9 +1187,18 @@ namespace VIctoryLauncher
         {
             try
             {
-                var p = Process.Start(new ProcessStartInfo(file, args) { UseShellExecute = false, CreateNoWindow = !window });
-                p.WaitForExit();
-                return p.ExitCode;
+                // taskkill and powercfg answer at once: 30 s, then they are stopped and the call says -1.
+                // robocopy (a move of the caches) and winget (an install) take as long as they take.
+                bool quick = file == "taskkill" || file == "powercfg";
+                using (var p = Process.Start(new ProcessStartInfo(file, args) { UseShellExecute = false, CreateNoWindow = !window }))
+                {
+                    if (!p.WaitForExit(quick ? 30000 : Timeout.Infinite))
+                    {
+                        try { p.Kill(); } catch (Exception) { }
+                        return -1;
+                    }
+                    return p.ExitCode;
+                }
             }
             catch (Exception) { return -1; }
         }
@@ -773,10 +1212,13 @@ namespace VIctoryLauncher
         {
             try
             {
-                var lines = File.Exists(settingsFile) ? File.ReadAllLines(settingsFile).Where(l => !l.StartsWith(key + "=")).ToList() : new List<string>();
-                lines.Add(key + "=" + value);
-                Directory.CreateDirectory(Path.GetDirectoryName(settingsFile));
-                File.WriteAllLines(settingsFile, lines);
+                lock (settingsLock)
+                {
+                    var lines = File.Exists(settingsFile) ? File.ReadAllLines(settingsFile).Where(l => !l.StartsWith(key + "=")).ToList() : new List<string>();
+                    lines.Add(key + "=" + value);
+                    Directory.CreateDirectory(Path.GetDirectoryName(settingsFile));
+                    WriteLinesAtomic(settingsFile, lines.ToArray());
+                }
             }
             catch (Exception) { }
         }
@@ -829,6 +1271,19 @@ namespace VIctoryLauncher
                 L("Laptops (Acer, Lenovo, HP, Dell...): usually no switch; it comes with the maker's BIOS update for your model.", "Portateis (Acer, Lenovo, HP, Dell...): normalmente nao ha opcao; vem com a atualizacao de BIOS do fabricante para o teu modelo.") };
         }
 
+        // A dialog in the theme (dark title bar, plum back, fixed size).
+        Form Dialog(string title, int width, int height)
+        {
+            var f = new Form { Text = title, ClientSize = new Size(width, height), BackColor = Theme.Back, ForeColor = Theme.Text, Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false, Icon = Icon };
+            f.HandleCreated += (s, e) => {
+                int on = 1;
+                try { if (DwmSetWindowAttribute(f.Handle, 20, ref on, 4) != 0) DwmSetWindowAttribute(f.Handle, 19, ref on, 4); } catch (Exception) { }
+                int caption = Theme.Side.R | (Theme.Side.G << 8) | (Theme.Side.B << 16);
+                try { DwmSetWindowAttribute(f.Handle, 35, ref caption, 4); } catch (Exception) { }
+            };
+            return f;
+        }
+
         void ShowRebarGuide()
         {
             bool uefi = Uefi();
@@ -836,8 +1291,8 @@ namespace VIctoryLauncher
             if (hw == null)
                 try { maker = Wmi("SELECT Manufacturer FROM Win32_BaseBoard", "Manufacturer"); board = Wmi("SELECT Product FROM Win32_BaseBoard", "Product"); } catch (Exception) { }
             int card = RebarCardSupport();
-            var f = new Form { Text = "Resizable BAR", ClientSize = new Size(820, 660), BackColor = Theme.Back, ForeColor = Theme.Text, Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon };
-            f.Controls.Add(new Heading(L("Resizable BAR", "Resizable BAR")) { Location = new Point(20, 16), Width = 780 });
+            var f = Dialog("Resizable BAR", 860, 720);
+            f.Controls.Add(new Heading(L("Resizable BAR", "Resizable BAR", "Resizable BAR")) { Location = new Point(24, 18), Width = 810 });
             Func<bool, string, string> line = (ok, what) => (ok ? "✓  " : "✗  ") + what;
             var lines = new List<string> {
                 line(rebar, rebarHeap == 1 ? L("The game gets it: D3D12 offers mapped video memory.", "O jogo tem-no: o D3D12 oferece memoria de video mapeada.")
@@ -849,8 +1304,8 @@ namespace VIctoryLauncher
                     : card == 2 ? string.Format(L("{0}: early RTX 30 cards need NVIDIA's Resizable BAR firmware update (see 2).", "{0}: as primeiras RTX 30 precisam da atualizacao de firmware Resizable BAR da NVIDIA (ve o 2)."), gpuName)
                     : string.Format(L("{0} supports it.", "A {0} suporta-o."), gpuName)),
             };
-            var state = new Label { Location = new Point(20, 50), Size = new Size(780, 92), Font = Theme.Mono(8.75f), BackColor = Theme.Back, ForeColor = rebar ? Theme.Good : Theme.Warn, Text = string.Join("\r\n", lines.ToArray()) };
-            f.Controls.Add(state);
+            // (the status lines and the instructions are drawn below, once the steps are built)
+
             var steps = new List<string>();
             steps.Add(L("1.  Motherboard: ", "1.  Placa-mae: ") + (maker + " " + board).Trim() + L(". Update its BIOS first, then in the BIOS:", ". Atualiza a BIOS primeiro, depois na BIOS:"));
             foreach (var s in RebarSteps(maker)) steps.Add("       " + s);
@@ -865,25 +1320,70 @@ namespace VIctoryLauncher
             steps.Add(L("   •  Pick Modest PC or Ultra Low, keep 'Keep the most video memory' on, and close apps on the Performance page:", "   •  Escolhe PC modesto ou Ultra baixo, deixa 'Guardar o maximo de VRAM' ligado e fecha apps na pagina Desempenho:"));
             steps.Add(L("      without Resizable BAR the copies to the card are slower, so less to copy helps most.", "      sem Resizable BAR as copias para a placa sao mais lentas, por isso copiar menos e o que mais ajuda."));
             steps.Add(L("   •  'I can't turn it on' stops the launcher warning you about it.", "   •  'Nao o consigo ligar' faz o launcher deixar de te avisar."));
-            var text = new Label { Location = new Point(20, 150), Size = new Size(780, 430), ForeColor = Theme.Text, BackColor = Theme.Back, Text = string.Join("\r\n", steps.ToArray()) };
-            f.Controls.Add(text);
-            int by = 600;
-            var bios = new Pill { Main = true, Text = L("Restart into the BIOS", "Reiniciar para a BIOS"), Location = new Point(20, by), Size = new Size(200, 40), Enabled = uefi && !rebar };
+            // Both cards in one scrolling area between the heading and the buttons: nothing is cut, whatever the language.
+            int bodyW = f.ClientSize.Width - 48;
+            var body = new Panel { Location = new Point(24, 58), Size = new Size(bodyW, f.ClientSize.Height - 58 - 76), AutoScroll = true, BackColor = Theme.Back };
+            Kit.Dark(body, "DarkMode_Explorer");
+            f.Controls.Add(body);
+            int cardW = bodyW - SystemInformation.VerticalScrollBarWidth - 6, innerW = cardW - 40;
+            var statusCard = new RoundCard { Location = new Point(0, 0), Width = cardW };
+            int sy = 16;
+            var rowFont = Theme.Ui(9.5f);
+            foreach (var ln in lines)
+            {
+                bool good = ln.StartsWith("✓");
+                var what = ln.Substring(Math.Min(3, ln.Length));
+                var mark = new StatusMark { Location = new Point(16, sy), Size = new Size(22, 22), Kind = good ? 1 : 0 };
+                var lb = Kit.Text(what, rowFont, good ? Theme.Soft : Theme.Warn, Theme.Card, 48, sy + 1, cardW - 48 - 16);
+                statusCard.Controls.Add(mark); statusCard.Controls.Add(lb);
+                sy += Math.Max(26, lb.Height + 2) + 6;
+            }
+            statusCard.Height = sy + 10;
+            body.Controls.Add(statusCard);
+            var helpCard = new RoundCard { Location = new Point(0, statusCard.Height + 12), Width = cardW };
+            int hy = 16;
+            foreach (var ln in steps)
+            {
+                if (ln.Trim().Length == 0) { hy += 10; continue; }
+                int indent = ln.Length - ln.TrimStart().Length;
+                var t = ln.TrimStart();
+                bool head = indent == 0;
+                int dx = head ? 0 : indent >= 6 ? 26 : 12;
+                var lb = Kit.Text(t, head ? Theme.UiBold(9.75f) : Theme.Ui(9.5f), head ? Theme.Text : Theme.Soft, Theme.Card, 20 + dx, hy, innerW - dx);
+                helpCard.Controls.Add(lb);
+                hy += lb.Height + (head ? 2 : 0);
+            }
+            helpCard.Height = hy + 14;
+            body.Controls.Add(helpCard);
+            body.Controls.Add(new Label { Location = new Point(0, helpCard.Bottom), Size = new Size(10, 8), BackColor = Theme.Back });
+
+            // The buttons (only the ones that apply are made, so there is no gap).
+            var bios = new Pill { Main = true, Text = L("Restart into the BIOS", "Reiniciar para a BIOS", "Redémarrer dans le BIOS"), Size = new Size(200, 40), Enabled = uefi && !rebar, Font = Theme.Ui(10f) };
             bios.Click += (s, e) => {
-                var ask = L("Save your work first. The PC restarts in 5 seconds and opens its BIOS/UEFI settings. Restart now?", "Guarda o teu trabalho primeiro. O PC reinicia em 5 segundos e abre as definicoes da BIOS/UEFI. Reiniciar agora?");
+                var ask = L("Save your work first. The PC restarts in 5 seconds and opens its BIOS/UEFI settings. Restart now?", "Guarda o teu trabalho primeiro. O PC reinicia em 5 segundos e abre as definicoes da BIOS/UEFI. Reiniciar agora?", "Enregistre ton travail d'abord. Le PC redémarre dans 5 secondes et ouvre les réglages du BIOS/UEFI. Redémarrer maintenant ?");
                 if (MessageBox.Show(f, ask, "Resizable BAR", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     new Thread(() => Elevated("shutdown", "/r /fw /t 5")) { IsBackground = true }.Start();
             };
-            f.Controls.Add(bios);
-            var vbios = new Pill { Text = L("NVIDIA firmware update", "Firmware da NVIDIA"), Location = new Point(230, by + 3), Size = new Size(180, 34), Visible = card == 2 };
-            vbios.Click += (s, e) => OpenUrl("https://www.nvidia.com/en-us/geforce/news/geforce-rtx-30-series-resizable-bar-support/");
-            f.Controls.Add(vbios);
-            var again = new Pill { Text = L("Check again", "Verificar de novo"), Location = new Point(card == 2 ? 420 : 230, by + 3), Size = new Size(150, 34) };
+            var buttons = new List<Pill> { bios };
+            if (card == 2)
+            {
+                var vbios = new Pill { Text = L("NVIDIA firmware update", "Firmware da NVIDIA", "Firmware NVIDIA"), Size = new Size(180, 40) };
+                vbios.Click += (s, e) => OpenUrl("https://www.nvidia.com/en-us/geforce/news/geforce-rtx-30-series-resizable-bar-support/");
+                buttons.Add(vbios);
+            }
+            var again = new Pill { Text = L("Check again", "Verificar de novo", "Vérifier à nouveau"), Size = new Size(150, 40) };
             again.Click += (s, e) => { f.Close(); DetectSystem(); ProbeGpu(); CheckAll(); };
-            f.Controls.Add(again);
-            var cant = new Pill { Text = L("I can't turn it on", "Nao o consigo ligar"), Location = new Point(card == 2 ? 580 : 390, by + 3), Size = new Size(170, 34), Visible = !rebar };
-            cant.Click += (s, e) => { WriteSetting("rebar_ack", "1"); Log(L("Resizable BAR: no more warnings. The game runs without it.", "Resizable BAR: sem mais avisos. O jogo corre sem ele.")); f.Close(); CheckAll(); Refresh2(); };
-            f.Controls.Add(cant);
+            buttons.Add(again);
+            if (!rebar)
+            {
+                var cant = new Pill { Text = L("I can't turn it on", "Nao o consigo ligar", "Je ne peux pas l'activer"), Size = new Size(170, 40) };
+                cant.Click += (s, e) => { WriteSetting("rebar_ack", "1"); Log(L("Resizable BAR: no more warnings. The game runs without it.", "Resizable BAR: sem mais avisos. O jogo corre sem ele.")); f.Close(); CheckAll(); Refresh2(); };
+                buttons.Add(cant);
+            }
+            var bar = new Panel { Dock = DockStyle.Bottom, Height = 76, BackColor = Theme.Back };
+            bar.Paint += (s, e) => { using (var pen = new Pen(Theme.Line)) e.Graphics.DrawLine(pen, 0, 0, bar.Width, 0); };
+            f.Controls.Add(bar);
+            Kit.Row(bar, 24, 18, f.ClientSize.Width - 48, buttons.ToArray());
             f.ShowDialog(this);
         }
     }

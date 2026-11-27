@@ -115,10 +115,11 @@ namespace VIctoryLauncher
         // (to share them with another way of starting VIctory).
         string cacheDir, dataDir;
 
-        Banner banner;
+        Hero banner;
+        FootMeta footMeta;
         StatusStrip statusStrip;
         TextBox gameBox;
-        Label gameStatus, buildStatus, modeInfo, vramSummary, smoothStatus, footerStatus, footerState, warnText, updateBadge;
+        Label gameStatus, buildStatus, modeInfo, vramSummary, smoothStatus, warnText, updateBadge;
         Panel warnPanel;
         Pill warnFix;
         Heading presetHeading, gameHeading;
@@ -158,6 +159,17 @@ namespace VIctoryLauncher
         public LauncherForm()
         {
             settingsFile = Path.Combine(Path.GetDirectoryName(dataRoot), "launcher.ini");
+            // Worker threads stop starting tools once the window is closing (OnFormClosing kills the running ones).
+            FormClosing += (s, e) => {
+                if (e.Cancel) return;
+                bool asks;
+                lock (tools) asks = tools.Any(t => { try { return !t.HasExited; } catch (Exception) { return false; } });
+                // With a question to come (Session.cs asks before stopping), the answer is not known here yet.
+                if (e.CloseReason == CloseReason.UserClosing && asks) closePrompt = true; else closing = true;
+            };
+            FormClosed += (s, e) => { closing = true; };
+            Activated += (s, e) => { if (closePrompt && !closing) { try { BeginInvoke(new Action(() => { if (!closing) closePrompt = false; })); } catch (Exception) { } } };
+            Anim.Attach(this, ReadSetting("animations") != "0");
             Pt = ReadSetting("lang") == "pt";
             Fr = ReadSetting("lang") == "fr";
             cacheDir = ReadSetting("cache");
@@ -197,7 +209,7 @@ namespace VIctoryLauncher
             Text = "Julia's Launcher";
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch (Exception) { }
             ClientSize = new Size(1200, 900);
-            MinimumSize = new Size(1080, 720);
+            MinimumSize = new Size(1160, 720);
             BackColor = Theme.Back;
             ForeColor = Theme.Text;
             Font = Theme.Ui(9.75f);
@@ -269,51 +281,72 @@ namespace VIctoryLauncher
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            // The PayDrop theme is dark: a dark title bar, tinted plum where Windows 11 allows it.
             int on = 1;
             try { if (DwmSetWindowAttribute(Handle, 20, ref on, 4) != 0) DwmSetWindowAttribute(Handle, 19, ref on, 4); } catch (Exception) { }
+            int caption = Theme.Side.R | (Theme.Side.G << 8) | (Theme.Side.B << 16);
+            try { DwmSetWindowAttribute(Handle, 35, ref caption, 4); } catch (Exception) { }
         }
 
         // ---------------------------------------------------------------- top bar and side bar
         Control TopBar()
         {
-            var bar = new Panel { Dock = DockStyle.Top, Height = 38, BackColor = Theme.Side };
+            var bar = new Panel { Dock = DockStyle.Top, Height = 52, BackColor = Theme.Side };
+            // The links at the right as tiny two-line labels (name over what it is).
+            string[][] linkText = {
+                new[] { "Discord", L("Chat and help", "Conversa e ajuda", "Discussion et aide") },
+                new[] { "Site", L("Source on GitHub", "Codigo no GitHub", "Code sur GitHub") },
+            };
+            string[] linkUrl = { DiscordInvite, RepoUrl };
+            var linkBox = new Rectangle[2];
+            int hot = -1;
+            updateBadge = new Label { Text = "", AutoSize = true, ForeColor = Theme.Good, BackColor = Theme.Side, Font = Theme.Mono(8.5f), Cursor = Cursors.Hand };
+            updateBadge.Click += (s, e) => Show(PageUpdates);
+            bar.Controls.Add(updateBadge);
+            Action place = () => {
+                int x = bar.Width - 28;
+                using (var f = Theme.Ui(8.5f))
+                    for (int i = 1; i >= 0; i--)
+                    {
+                        int w = Math.Max(Kit.TextW(linkText[i][0], f), Kit.TextW(linkText[i][1], f)) + 20;
+                        x -= w;
+                        linkBox[i] = new Rectangle(x, 9, w, 34);
+                        x -= 30;
+                    }
+                updateBadge.Location = new Point(linkBox[0].Left - updateBadge.Width - 12, (bar.Height - updateBadge.Height) / 2);
+            };
             bar.Paint += (s, e) => {
                 var g = e.Graphics;
                 Theme.Smooth(g);
-                using (var f = new Font("Segoe UI Symbol", 11f))
-                using (var b = new SolidBrush(Theme.Text)) g.DrawString("❄", f, b, 14, 8);
-                float x = 38;
-                using (var f = Theme.UiBold(10f))
-                using (var b = new SolidBrush(Theme.Text)) { g.DrawString("Cold Project VI", f, b, x, 9); x += g.MeasureString("Cold Project VI", f).Width + 6; }
-                using (var f = Theme.Mono(8.5f))
-                using (var b = new SolidBrush(Theme.Dim)) g.DrawString("v" + Updater.Version, f, b, x, 12);
-                using (var p = new Pen(Theme.Line)) g.DrawLine(p, 0, bar.Height - 1, bar.Width, bar.Height - 1);
+                // The mark: "VI" on a small butter tile, then the launcher's name over its version.
+                var tile = new RectangleF(16, 13, 26, 26);
+                using (var path = Theme.Round(tile, 7))
+                using (var b = new SolidBrush(Theme.Cyan)) g.FillPath(b, path);
+                using (var f = new Font("Segoe UI Black", 8.5f))
+                using (var b = new SolidBrush(Theme.OnAccent))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    g.DrawString("VI", f, b, tile, sf);
+                Theme.Meta(g, "Julia's Launcher", "v" + Updater.Version, Theme.Muted, new RectangleF(54, 9, 240, 34), StringAlignment.Near);
+                for (int i = 0; i < 2; i++)
+                    Theme.Meta(g, linkText[i][0] + " ↗", linkText[i][1], i == hot ? Theme.Soft : Theme.Muted, new RectangleF(linkBox[i].X, linkBox[i].Y, linkBox[i].Width + 14, 34), StringAlignment.Near);
+                using (var p = new Pen(Theme.Rule)) g.DrawLine(p, 0, bar.Height - 1, bar.Width, bar.Height - 1);
             };
-            Func<string, string, Label> link = (text, url) => {
-                var l = new Label { Text = text, AutoSize = true, ForeColor = Theme.Dim, BackColor = Theme.Side, Font = Theme.Ui(9f), Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-                l.Click += (s, e) => OpenUrl(url);
-                l.MouseEnter += (s, e) => l.ForeColor = Theme.Text;
-                l.MouseLeave += (s, e) => l.ForeColor = Theme.Dim;
-                bar.Controls.Add(l);
-                return l;
+            bar.MouseMove += (s, e) => {
+                int now = -1;
+                for (int i = 0; i < 2; i++) if (linkBox[i].Contains(e.Location)) now = i;
+                if (now != hot) { hot = now; bar.Cursor = now >= 0 ? Cursors.Hand : Cursors.Default; bar.Invalidate(); }
             };
-            var site = link("↗ Site", RepoUrl);
-            var discord = link("↗ Discord", DiscordInvite);
-            updateBadge = new Label { Text = "", AutoSize = true, ForeColor = Theme.Good, BackColor = Theme.Side, Font = Theme.Mono(8.5f), Cursor = Cursors.Hand, Anchor = AnchorStyles.Top | AnchorStyles.Right };
-            updateBadge.Click += (s, e) => Show(PageUpdates);
-            bar.Controls.Add(updateBadge);
-            bar.Resize += (s, e) => {
-                site.Location = new Point(bar.Width - site.Width - 16, 11);
-                discord.Location = new Point(site.Left - discord.Width - 14, 11);
-                updateBadge.Location = new Point(discord.Left - updateBadge.Width - 18, 12);
-            };
+            bar.MouseLeave += (s, e) => { if (hot != -1) { hot = -1; bar.Cursor = Cursors.Default; bar.Invalidate(); } };
+            bar.MouseClick += (s, e) => { for (int i = 0; i < 2; i++) if (linkBox[i].Contains(e.Location)) OpenUrl(linkUrl[i]); };
+            bar.Resize += (s, e) => { place(); bar.Invalidate(); };
+            place();
             return bar;
         }
 
         Control SideBar()
         {
             var side = new Panel { Dock = DockStyle.Left, Width = 216, BackColor = Theme.Side };
-            side.Paint += (s, e) => { using (var p = new Pen(Theme.Line)) e.Graphics.DrawLine(p, side.Width - 1, 0, side.Width - 1, side.Height); };
+            side.Paint += (s, e) => { using (var p = new Pen(Theme.Rule)) e.Graphics.DrawLine(p, side.Width - 1, 0, side.Width - 1, side.Height); };
             string[][] items = {
                 new[] { "", L("Play", "Jogar") },
                 new[] { "", L("Performance", "Desempenho") },
@@ -327,7 +360,7 @@ namespace VIctoryLauncher
             for (int i = 0; i < items.Length; i++)
             {
                 int k = i;
-                var b = new NavButton { Glyph = items[i][0], Text = items[i][1], Location = new Point(6, 16 + i * 42) };
+                var b = new NavButton { Glyph = (i + 1).ToString("00"), Text = items[i][1], Size = new Size(200, 38), Location = new Point(8, 24 + i * 40) };
                 b.Click += (s, e) => Show(k);
                 nav.Add(b);
                 side.Controls.Add(b);
@@ -335,9 +368,9 @@ namespace VIctoryLauncher
             var report = new Pill { Text = L("Send errors (GitHub / Discord)", "Enviar erros (GitHub / Discord)"), Size = new Size(184, 34), Location = new Point(16, 0), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
             report.Click += (s, e) => ReportErrors();
             side.Controls.Add(report);
-            var en = new Pill { Text = "EN", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = !Pt && !Fr };
-            var pt = new Pill { Text = "PT", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = Pt };
-            var fr = new Pill { Text = "FR", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = Fr };
+            var en = new Pill { Link = true, Text = "EN", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = !Pt && !Fr };
+            var pt = new Pill { Link = true, Text = "PT", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = Pt };
+            var fr = new Pill { Link = true, Text = "FR", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = Fr };
             en.Click += (s, e) => { if (Pt || Fr) { Pt = false; Fr = false; SaveSettings(); RestartLauncher(); } };
             pt.Click += (s, e) => { if (!Pt) { Pt = true; Fr = false; SaveSettings(); RestartLauncher(); } };
             fr.Click += (s, e) => { if (!Fr) { Fr = true; Pt = false; SaveSettings(); RestartLauncher(); } };
@@ -352,10 +385,17 @@ namespace VIctoryLauncher
             return side;
         }
 
+        int shownPage = -1;
+
         void Show(int page)
         {
+            bool changed = page != shownPage;
+            shownPage = page;
             for (int i = 0; i < pages.Count; i++) pages[i].Visible = i == page;
+            if (changed) foreach (Control c in pages[page].Controls) { var poster = c as Poster; if (poster != null) { poster.PlayIntro(); break; } }
+            Anim.Wake();
             for (int i = 0; i < nav.Count; i++) nav[i].Active = i == page || (page == PageCustom && i == PagePlay);
+            PlacePlayButton(page);
             if (page == PageSetup) CheckAll();
             if (page == PagePerf) ScanMemory();
             if (page == PageShaders) RefreshShaders();
@@ -366,7 +406,36 @@ namespace VIctoryLauncher
 
         Panel Page()
         {
-            return new Panel { BackColor = Theme.Back, AutoScroll = true, Padding = new Padding(24, 20, 24, 20) };
+            var page = new Panel { BackColor = Theme.Back, AutoScroll = true, Padding = new Padding(24, 20, 24, 20) };
+            // A poster (the head of a page) always spans the page's whole width, glow to the edges.
+            Action stretch = () => {
+                int w = page.ClientSize.Width, off = page.AutoScrollPosition.X;
+                if (w <= 0) return;
+                foreach (Control c in page.Controls)
+                    if (c is Poster && (c.Width != w || c.Left != off)) c.SetBounds(off, 0, w, 0, BoundsSpecified.X | BoundsSpecified.Width);
+            };
+            page.Resize += (s, e) => stretch();
+            page.ClientSizeChanged += (s, e) => stretch();
+            page.ControlAdded += (s, e) => stretch();
+            page.VisibleChanged += (s, e) => { if (page.Visible) stretch(); };
+            return page;
+        }
+
+        // The head of a page: tiny labels on the rule, the headline (a heavy word, an italic serif run in butter) and a quiet line.
+        // The page's content starts at PageHeadH(sub) below it.
+        PageHead Head(string eyeValue, string heavy, string accent, string sub)
+        {
+            var h = new PageHead { Location = new Point(0, 0), Eye = "Julia's Launcher", EyeValue = eyeValue, Title = heavy, Accent = accent, Sub = sub };
+            using (var f = Theme.Ui(10f)) h.Height = 150 + (string.IsNullOrEmpty(sub) ? 0 : Kit.TextH(sub, f, h.SubWidth) + 8);
+            return h;
+        }
+
+        // Adds a page's head and returns the y where its content starts.
+        int PageTop(Panel page, string eyeValue, string heavy, string accent, string sub)
+        {
+            var h = Head(eyeValue, heavy, accent, sub);
+            page.Controls.Add(h);
+            return h.Height + 16;
         }
 
         Label Small(string text, int x, int y, int width)
@@ -374,17 +443,15 @@ namespace VIctoryLauncher
             return new Label { Text = text, Location = new Point(x, y), Size = new Size(width, 20), ForeColor = Theme.Dim, BackColor = Theme.Back };
         }
 
-        // ---------------------------------------------------------------- footer: state and PLAY
+        // ---------------------------------------------------------------- footer: a thin rule and tiny labels (state, preset, engine, hardware); PLAY on the pages other than Play
         Control Footer()
         {
-            var foot = new Panel { Dock = DockStyle.Bottom, Height = 76, BackColor = Theme.Back };
-            var box = new Panel { BackColor = Theme.Card, Location = new Point(28, 14), Height = 48 };
-            box.Paint += (s, e) => { using (var p = new Pen(Theme.Line)) e.Graphics.DrawRectangle(p, 0, 0, box.Width - 1, box.Height - 1); };
-            footerState = new Label { Location = new Point(14, 0), Size = new Size(96, 48), TextAlign = ContentAlignment.MiddleLeft, Font = Theme.Mono(9f), ForeColor = Theme.Good, BackColor = Theme.Card };
-            footerStatus = new Label { Location = new Point(110, 0), Height = 48, TextAlign = ContentAlignment.MiddleLeft, Font = Theme.Mono(9f), ForeColor = Theme.Text, BackColor = Theme.Card, AutoEllipsis = true };
-            box.Controls.Add(footerState); box.Controls.Add(footerStatus);
-            foot.Controls.Add(box);
-            closeButton = new Pill { Text = L("Close game", "Fechar o jogo"), Size = new Size(158, 48), Visible = false };
+            var foot = new Panel { Dock = DockStyle.Bottom, Height = 64, BackColor = Theme.Back };
+            footPanel = foot;
+            footMeta = new FootMeta { Location = new Point(0, 1), Size = new Size(400, 62),
+                Labels = new[] { L("State", "Estado", "État"), L("Preset", "Predefinicao", "Préréglage"), L("Engine", "Motor", "Moteur"), L("Hardware", "Hardware", "Matériel"), L("Next step", "Proximo passo", "Prochaine étape") } };
+            foot.Controls.Add(footMeta);
+            closeButton = new Pill { Text = L("Close game", "Fechar o jogo"), Size = new Size(160, 44), Visible = false };
             closeButton.Click += (s, e) => {
                 if (State() == GameState.Running && MessageBox.Show(this, L("Close the game now? What was not saved is lost.", "Fechar o jogo agora? O que nao foi guardado perde-se."),
                     "Julia's Launcher", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
@@ -392,77 +459,231 @@ namespace VIctoryLauncher
                 Refresh2();
             };
             foot.Controls.Add(closeButton);
-            playButton = new Pill { Main = true, Text = L("▶  PLAY", "▶  JOGAR"), Size = new Size(210, 48), Font = new Font("Segoe UI Semibold", 12.5f) };
+            playButton = new Pill { Main = true, Shine = true, Text = L("Play  →", "Jogar  →", "Jouer  →"), Size = new Size(190, 44), Font = new Font("Segoe UI Semibold", 12f) };
             playButton.Click += (s, e) => Play();
             foot.Controls.Add(playButton);
-            foot.Paint += (s, e) => { using (var p = new Pen(Theme.Line)) e.Graphics.DrawLine(p, 0, 0, foot.Width, 0); };
-            foot.Resize += (s, e) => {
-                playButton.Location = new Point(foot.Width - 28 - playButton.Width, 14);
-                closeButton.Location = new Point(playButton.Left - 10 - closeButton.Width, 14);
-                box.Width = Math.Max(200, (closeButton.Visible ? closeButton.Left : playButton.Left) - 14 - box.Left);
-                footerStatus.Width = box.Width - footerStatus.Left - 10;
+            foot.Paint += (s, e) => { using (var p = new Pen(Theme.Rule)) e.Graphics.DrawLine(p, 0, 0, foot.Width, 0); };
+            layoutFoot = () => {
+                int right = foot.Width - 40;
+                // On the Play page PLAY is on the poster; here it is at the right end.
+                if (playButton.Parent == foot) { playButton.Location = new Point(right - playButton.Width, 10); right = playButton.Left - 12; }
+                if (closeButton.Visible) { closeButton.Location = new Point(right - closeButton.Width, 10); right = closeButton.Left - 12; }
+                footMeta.Width = Math.Max(100, right - 8);
             };
-            closeButton.VisibleChanged += (s, e) => { var w = foot.Width; foot.Width = w + 1; foot.Width = w; };
+            foot.Resize += (s, e) => layoutFoot();
+            closeButton.VisibleChanged += (s, e) => layoutFoot();
             return foot;
         }
 
+        // PLAY lives on the poster of the Play page and in the footer on the others: the one button moves.
+        void PlacePlayButton(int page)
+        {
+            if (banner == null || footPanel == null) return;
+            if (page == PagePlay)
+            {
+                if (playButton.Parent != banner)
+                {
+                    playButton.Size = new Size(200, 48);
+                    playButton.Font = new Font("Segoe UI Semibold", 12.5f);
+                    banner.Controls.Add(playButton);
+                }
+                playButton.Location = new Point(40, HeroButtonsY);
+            }
+            else if (playButton.Parent != footPanel)
+            {
+                playButton.Size = new Size(190, 44);
+                playButton.Font = new Font("Segoe UI Semibold", 12f);
+                footPanel.Controls.Add(playButton);
+            }
+            if (layoutFoot != null) layoutFoot();
+        }
+
+        // A panel of the page's cards gets rounded corners (a region, so its own children stay inside).
+        static void Rounded(Control c, float radius)
+        {
+            Action set = () => {
+                if (c.Width < 4 || c.Height < 4) return;
+                using (var path = Theme.Round(new RectangleF(0, 0, c.Width, c.Height), radius)) c.Region = new Region(path);
+            };
+            c.Resize += (s, e) => set();
+            set();
+        }
+
+        // A text box in a rounded field of the theme (the stock one has a hard system border).
+        class Field : Panel
+        {
+            public Field() { DoubleBuffered = true; BackColor = Theme.Back; ResizeRedraw = true; }
+        }
+
+        Field FieldFor(TextBox tb, int x, int y, int w, int h) { return FieldFor(tb, x, y, w, h, false); }
+
+        // flat: no box, just one underline (a quiet row of a page); otherwise a rounded inset.
+        Field FieldFor(TextBox tb, int x, int y, int w, int h, bool flat)
+        {
+            var f = new Field { Location = new Point(x, y), Size = new Size(w, h) };
+            tb.BorderStyle = BorderStyle.None;
+            tb.BackColor = flat ? Theme.Back : Theme.Card;
+            f.Controls.Add(tb);
+            Action lay = () => {
+                if (tb.Multiline) tb.SetBounds(flat ? 2 : 12, 10, Math.Max(10, f.Width - (flat ? 4 : 24)), Math.Max(10, f.Height - 20));
+                else if (flat) tb.SetBounds(0, Math.Max(0, (f.Height - tb.Height) / 2 - 1), Math.Max(10, f.Width - 4), tb.Height);
+                else tb.SetBounds(14, Math.Max(0, (f.Height - tb.Height) / 2), Math.Max(10, f.Width - 28), tb.Height);
+            };
+            f.Paint += (s, e) => {
+                Theme.Smooth(e.Graphics);
+                if (flat && tb.Multiline)
+                {
+                    // A text area as type: a hairline above and below it (butter and thicker below while it has focus).
+                    using (var b = new SolidBrush(Theme.Rule)) e.Graphics.FillRectangle(b, 0, 0, f.Width, 1);
+                    using (var b = new SolidBrush(tb.Focused ? Theme.Cyan : Theme.Rule)) e.Graphics.FillRectangle(b, 0, f.Height - (tb.Focused ? 2 : 1), f.Width, tb.Focused ? 2 : 1);
+                    return;
+                }
+                if (flat)
+                {
+                    using (var b = new SolidBrush(tb.Focused ? Theme.Cyan : Theme.LineStrong)) e.Graphics.FillRectangle(b, 0, f.Height - (tb.Focused ? 2 : 1), f.Width, tb.Focused ? 2 : 1);
+                    return;
+                }
+                Theme.Panel(e.Graphics, new RectangleF(0.5f, 0.5f, f.Width - 1.5f, f.Height - 1.5f), Theme.Card, tb.Focused ? Theme.Cyan : Theme.Line, tb.Multiline ? 10 : f.Height / 2f);
+            };
+            f.Resize += (s, e) => lay();
+            tb.GotFocus += (s, e) => f.Invalidate();
+            tb.LostFocus += (s, e) => f.Invalidate();
+            lay();
+            return f;
+        }
+
+        // A drop-down list in the theme's colours (the list, the picked row, the highlight).
+        static void ThemeCombo(ComboBox c)
+        {
+            c.DrawMode = DrawMode.OwnerDrawFixed;
+            c.ItemHeight = 22;
+            c.DrawItem += (s, e) => {
+                if (e.Index < 0) return;
+                bool hot = (e.State & DrawItemState.Selected) != 0 && (e.State & DrawItemState.ComboBoxEdit) == 0;
+                using (var bg = new SolidBrush(hot ? Theme.Selected : Theme.Card)) e.Graphics.FillRectangle(bg, e.Bounds);
+                TextRenderer.DrawText(e.Graphics, c.GetItemText(c.Items[e.Index]), c.Font, new Rectangle(e.Bounds.X + 6, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height),
+                    Theme.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+            };
+        }
+
+        // Makes a page follow the window's width: every control keeps its place in the 'baseW' grid and is
+        // stretched with it (a hidden control keeps its left and width too; its top is set when it is shown).
+        // 'after' runs with the new width for what has to be measured again (wrapped text).
+        void Fluid(Panel page, int x, int baseW, Action<int> after)
+        {
+            var snap = new List<Tuple<Control, int, int>>();
+            foreach (Control c in page.Controls) if (!(c is Poster)) snap.Add(Tuple.Create(c, c.Left, c.Width));
+            bool busy = false;
+            Action apply = () => {
+                if (busy || page.ClientSize.Width <= 0) return;
+                busy = true;
+                try
+                {
+                    int avail = page.ClientSize.Width - 2 * x;
+                    float k = Math.Max(0.8f, Math.Min(1.35f, avail / (float)baseW));
+                    int off = page.AutoScrollPosition.X;
+                    page.SuspendLayout();
+                    foreach (var t in snap)
+                        t.Item1.SetBounds(off + x + (int)Math.Round((t.Item2 - x) * k), 0, (int)Math.Round(t.Item3 * k), 0, BoundsSpecified.X | BoundsSpecified.Width);
+                    if (after != null) after((int)Math.Round(baseW * k));
+                    page.ResumeLayout(true);
+                }
+                finally { busy = false; }
+            };
+            page.Resize += (s, e) => apply();
+            page.VisibleChanged += (s, e) => { if (page.Visible) apply(); };
+        }
+
         // ---------------------------------------------------------------- Play page
+        // A poster, then quiet rows (game, engine), the presets set as type, the launch options as flat rows.
         Panel PlayPage()
         {
             var page = Page();
-            const int X = 28, W = 900;
-            int y = 18;
-            banner = new Banner { Location = new Point(X, y), Size = new Size(W, 110),
-                Title = L("Xbox Series-to-Windows compatibility runtime · ", "Runtime de compatibilidade Xbox Series para Windows · ramo "),
-                Accent = "edupode", Subtitle = L(" branch", "") };
+            const int X = 40, W = 900;
+            Theme.TestedText = L("Tested", "Testado", "Testé");
+
+            // The poster: Julia's Launcher and the build along the top rule, the headline, one sentence, PLAY and
+            // Setup, the readiness steps as milestone chips on the rings, the hardware along the bottom rule
+            // (Refresh2 and UpdateBanner fill them in). The strip of checks stays as the steps' data, not drawn.
+            statusStrip = new StatusStrip();
+            banner = new Hero { Location = new Point(0, 0), Size = new Size(2 * X + W, Hero.Rows),
+                Brand = "Julia's Launcher", BrandValue = "v" + Updater.Version,
+                RightLabel = L("Build", "Versao", "Version"),
+                RightValue = L("Xbox Series, run through VIctory", "Xbox Series, corrida pelo VIctory", "Xbox Series, lancée par VIctory"),
+                Title = L("Ready", "Pronto", "Prêt"), Accent = L("when you are.", "quando quiseres.", "quand tu veux."),
+                StepNames = new[] { L("Game", "Jogo", "Jeu"), L("Engine", "Motor", "Moteur"), L("Shaders", "Shaders", "Shaders"), "Windows" } };
+            playButton.MouseDown += (s, e) => { if (playButton.Parent == banner && playButton.Enabled) banner.Ripple(); };
+            heroGhost = new Pill { Text = L("Setup", "Preparar", "Préparer"), Font = Theme.Ui(10.5f), Size = new Size(Kit.PillW(L("Fix it", "Corrigir", "Corriger"), 10.5f, 128), 48), Location = new Point(X + 212, HeroButtonsY) };
+            heroGhost.Click += (s, e) => Show(PageSetup);
+            heroAuto = new Pill { Link = true, Text = "Auto-Setup", Font = Theme.Ui(10f), Size = new Size(104, 32), Location = new Point(X + 212 + heroGhost.Width + 10, HeroButtonsY + 8) };
+            heroAuto.Click += (s, e) => { Show(PageSetup); DoEverything(); };
+            banner.Controls.Add(heroGhost); banner.Controls.Add(heroAuto);
             page.Controls.Add(banner);
-            y += 124;
-
-            // The checks in one strip, with Auto-Setup and Configure.
-            statusStrip = new StatusStrip { Location = new Point(X, y), Size = new Size(W, 52), BackColor = Theme.Card };
-            var auto = new Pill { Text = "Auto-Setup", Location = new Point(W - 222, 9), Size = new Size(104, 34), BackColor = Theme.Card };
-            auto.Click += (s, e) => { Show(PageSetup); DoEverything(); };
-            var conf = new Pill { Text = L("Configure", "Configurar"), Location = new Point(W - 112, 9), Size = new Size(100, 34), BackColor = Theme.Card };
-            conf.Click += (s, e) => Show(PageSetup);
-            statusStrip.Controls.Add(auto); statusStrip.Controls.Add(conf);
-            page.Controls.Add(statusStrip);
-            y += 60;
-
-            // What is missing (Windows settings, Resizable BAR, shaders), with the way to fix it.
-            warnPanel = new Panel { Location = new Point(X, y), Size = new Size(W, 44), BackColor = Theme.Card };
-            warnPanel.Paint += (s, e) => { using (var p = new Pen(warnText.ForeColor == Theme.Warn ? Color.FromArgb(120, 100, 40) : Theme.Line)) e.Graphics.DrawRectangle(p, 0, 0, warnPanel.Width - 1, warnPanel.Height - 1); };
-            warnText = new Label { Location = new Point(12, 0), Size = new Size(W - 160, 44), TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.Dim, BackColor = Theme.Card, Font = Theme.Ui(9f), AutoEllipsis = true };
-            warnFix = new Pill { Text = L("Fix it", "Corrigir"), Location = new Point(W - 132, 6), Size = new Size(120, 32), BackColor = Theme.Card, Visible = false };
+            // What is missing (Windows settings, Resizable BAR, shaders): the poster's sentence says it; these
+            // stay as the data Refresh2 fills, off the page.
+            warnPanel = new Panel(); warnText = new Label(); warnFix = new Pill();
             warnFix.Click += (s, e) => Show(PageSetup);
-            warnPanel.Controls.Add(warnText); warnPanel.Controls.Add(warnFix);
-            page.Controls.Add(warnPanel);
-            y += 58;
 
-            gameHeading = new Heading(L("Game", "Jogo")) { Location = new Point(X, y), Width = W };
-            page.Controls.Add(gameHeading);
-            y += 30;
-            gameBox = new TextBox { Location = new Point(X, y + 4), Width = W - 316, BackColor = Theme.Card, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle, Font = Theme.Mono(9.5f) };
+            int y = Hero.Rows + 28;
+
+            // Game: the folder as one line with an underline, Auto-detect and Browse, what was found under it.
+            gameHeading = new Heading(L("Game", "Jogo", "Jeu")) { Hair = false };
+            page.Controls.Add(new Label { Text = L("Game", "Jogo", "Jeu"), Font = Theme.UiBold(10.5f), ForeColor = Theme.Text, BackColor = Theme.Back, UseMnemonic = false, Location = new Point(X, y + 7), Size = new Size(140, 22) });
+            gameBox = new TextBox { ForeColor = Theme.Text, Font = Theme.Mono(9.5f) };
             gameBox.TextChanged += (s, e) => Refresh2();
-            page.Controls.Add(gameBox);
-            var detect = new Pill { Text = L("Auto-detect", "Detetar"), Location = new Point(X + W - 304, y), Width = 146 };
+            page.Controls.Add(FieldFor(gameBox, X + 150, y, W - 150 - 254, 34, true));
+            var detect = new Pill { Text = L("Auto-detect", "Detetar", "Détecter"), Location = new Point(X + W - 238, y + 1), Size = new Size(120, 32) };
             detect.Click += (s, e) => RunSteps(steps.Where(st => st.Fix == (Func<bool>)FindGame).ToArray());
             page.Controls.Add(detect);
-            var browse = new Pill { Text = L("Browse...", "Procurar..."), Location = new Point(X + W - 146, y), Width = 146 };
+            var browse = new Pill { Text = L("Browse...", "Procurar...", "Parcourir..."), Location = new Point(X + W - 110, y + 1), Size = new Size(110, 32) };
             browse.Click += (s, e) => {
                 using (var d = new FolderBrowserDialog { Description = L("Choose the folder that holds the game's game_scarlett*.exe", "Escolhe a pasta que tem o game_scarlett*.exe do jogo") })
                     if (d.ShowDialog(this) == DialogResult.OK) gameBox.Text = d.SelectedPath;
             };
             page.Controls.Add(browse);
-            y += 40;
-            gameStatus = Small("", X, y, W - 310);
+            gameStatus = new Label { Location = new Point(X + 150, y + 42), Size = new Size(470, 20), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f) };
             page.Controls.Add(gameStatus);
-            page.Controls.Add(ExeBox(X + W - 300, y - 2, 300));
-            y += 34;
+            page.Controls.Add(ExeBox(X + W - 240, y + 40, 240));
+            y += 74;
+            page.Controls.Add(new Rule { Location = new Point(X, y), Width = W });
+            y += 14;
 
-            presetHeading = new Heading(L("Render preset", "Predefinicao de imagem")) { Location = new Point(X, y), Width = W - 230 };
+            // The engine: the standard one, or Belobug's for Radeon cards (the same choice as on Hardware & ID), set as two words.
+            page.Controls.Add(new Label { Text = L("Engine", "Motor", "Moteur"), Font = Theme.UiBold(10.5f), ForeColor = Theme.Text, BackColor = Theme.Back, UseMnemonic = false, Location = new Point(X, y + 5), Size = new Size(140, 22) });
+            var stdText = L("Standard · recommended", "Padrao · recomendado", "Standard · recommandé");
+            var amdText = L("Belobug AMD · for Radeon", "Belobug AMD · para Radeon", "Belobug AMD · pour Radeon");
+            int w1, w2;
+            using (var lf = Theme.UiBold(10.5f)) { w1 = Kit.TextW(stdText, lf) + 28; w2 = Kit.TextW(amdText, lf) + 28; }
+            var stdEngine = new Pill { Link = true, Text = stdText, Font = Theme.Ui(10.5f), Location = new Point(X + 150, y), Size = new Size(w1, 32) };
+            var amdEngine = new Pill { Link = true, Text = amdText, Font = Theme.Ui(10.5f), Location = new Point(X + 150 + w1 + 12, y), Size = new Size(w2, 32) };
+            var engineNote = new Label { Location = new Point(X + 150, y + 36), Size = new Size(W - 150, 20), ForeColor = Theme.Muted, BackColor = Theme.Back, Font = Theme.Ui(8.75f), AutoEllipsis = true };
+            showEnginePills = () => {
+                stdEngine.Main = !UseAmdEngine; amdEngine.Main = UseAmdEngine;
+                stdEngine.Invalidate(); amdEngine.Invalidate();
+                engineNote.Text = UseAmdEngine
+                    ? L("Belobug's fork for Radeon cards, built from its source.", "O fork do Belobug para placas Radeon, compilado do codigo.", "Le fork de Belobug pour les cartes Radeon, compilé depuis son code.")
+                    : L("On a Radeon card: if the game closes with \"device removed\", try Belobug AMD.", "Numa placa Radeon: se o jogo fechar com \"device removed\", experimenta o Belobug AMD.", "Sur une carte Radeon : si le jeu se ferme avec « device removed », essaie Belobug AMD.");
+            };
+            Action<bool> pickEngine = amd => {
+                if (amd == UseAmdEngine) return;
+                // The Hardware page's choice follows; its handler saves, logs and refreshes.
+                if (engineBox != null) engineBox.SelectedIndex = amd ? 1 : 0;
+                else { WriteSetting("engine", amd ? "amd" : "edupode"); Log(L("Engine: ", "Motor: ") + EngineName); UpdateBanner(); Refresh2(); }
+                showEnginePills();
+            };
+            stdEngine.Click += (s, e) => pickEngine(false);
+            amdEngine.Click += (s, e) => pickEngine(true);
+            page.Controls.Add(stdEngine); page.Controls.Add(amdEngine); page.Controls.Add(engineNote);
+            showEnginePills();
+            y += 66;
+            page.Controls.Add(new Rule { Location = new Point(X, y), Width = W });
+            y += 30;
+
+            // The presets, set as type: the name large, the resolution under it, the picked one in butter with a rule.
+            presetHeading = new Heading(L("Quality preset", "Predefinicao de imagem", "Préréglage d'image")) { Location = new Point(X, y), Width = W - 240, Hair = false };
             page.Controls.Add(presetHeading);
             // The resolution the console reports to the game (VICTORY_DISPLAY_MODE): the preset's scale applies on top.
-            outputBox = new ComboBox { Location = new Point(X + W - 220, y - 2), Width = 220, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
+            outputBox = new Dropdown { Location = new Point(X + W - 220, y - 3), Width = 220 };
             outputBox.Items.AddRange(new object[] {
                 L("Output 1080p (Full HD)", "Saida 1080p (Full HD)"),
                 L("Output 1440p (2K)", "Saida 1440p (2K)"),
@@ -475,51 +696,64 @@ namespace VIctoryLauncher
                 "The resolution the game draws its picture for; the preset's scale applies on top (Recommended at 4K draws 2560x1440 and upscales). Higher output: a sharper picture, more video memory for the screen's images (about +0.5 GB at 2K, +1.5 GB at 4K) and more work for the card; the CPU stays the limit on strong cards. 2K and 4K are new: tell us on Discord how they run.",
                 "A resolucao para a qual o jogo desenha a imagem; a escala do preset aplica-se por cima (o Recomendado em 4K desenha 2560x1440 e amplia). Saida maior: imagem mais nitida, mais VRAM para as imagens do ecra (cerca de +0,5 GB em 2K, +1,5 GB em 4K) e mais trabalho para a placa; em placas fortes o limite continua a ser o processador. 2K e 4K sao novos: conta-nos no Discord como correm."));
             page.Controls.Add(outputBox);
-            y += 32;
-            int cw = (W - 6 * 8) / 7;
+            y += 42;
             for (int i = 0; i < CardOrder.Length; i++)
             {
                 int k = CardOrder[i];
-                var c = new ModeCard { Title = modes[k].Name, Tag2 = modes[k].Tag, Line = modes[k].Short, Location = new Point(X + i * (cw + 8), y), Size = new Size(cw, 74), Tag = k };
+                // Seven presets and six 12 px gaps fill exactly W (the last one reaches the right edge).
+                int cl = (int)Math.Round(i * (W + 12) / 7.0), cr = (int)Math.Round((i + 1) * (W + 12) / 7.0) - 12;
+                var c = new ModeCard { Title = modes[k].Name, Tag2 = modes[k].Tag, Line = modes[k].Short, Location = new Point(X + cl, y), Size = new Size(cr - cl, 78), Tag = k };
                 c.Click += (s, e) => { SelectMode(k); if (k == ModeCustom) Show(PageCustom); };
                 cards.Add(c);
                 page.Controls.Add(c);
             }
-            y += 82;
-            modeInfo = new Label { Location = new Point(X, y), Size = new Size(W, 36), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(8.75f) };
+            y += 90;
+            modeInfo = new Label { Location = new Point(X, y), Size = new Size(W - 120, 52), ForeColor = Theme.Soft, BackColor = Theme.Back, Font = Theme.Ui(9f) };
             page.Controls.Add(modeInfo);
-            y += 42;
+            y += 66;
 
-            page.Controls.Add(new Heading(L("Launch options", "Opcoes de arranque")) { Location = new Point(X, y), Width = W - 360 });
-            var best = new Pill { Text = L("★ Recommended setup", "★ Configuracao recomendada"), Location = new Point(X + W - 352, y - 4), Width = 200 };
+            // Launch options: three columns of flat rows (title, one muted line, the switch), a hairline between rows.
+            page.Controls.Add(new Heading(L("Launch options", "Opcoes de arranque", "Options de lancement")) { Location = new Point(X, y), Width = W - 370, Hair = false });
+            var best = new Pill { Text = L("Reset to recommended", "Repor o recomendado", "Revenir au recommandé"), Location = new Point(X + W - 354, y - 3), Size = new Size(200, 32) };
             best.Click += (s, e) => Recommended();
             page.Controls.Add(best);
-            var tweaks = new Pill { Text = L("Advanced Tweaks", "Ajustes avancados"), Location = new Point(X + W - 144, y - 4), Width = 144 };
+            var tweaks = new Pill { Text = L("Advanced Tweaks", "Ajustes avancados", "Réglages avancés"), Location = new Point(X + W - 146, y - 3), Size = new Size(146, 32) };
             tweaks.Click += (s, e) => Show(PageCustom);
             page.Controls.Add(tweaks);
-            y += 36;
-            int half = (W - 10) / 2;
+            y += 44;
+            // Three groups side by side: what you see, how fast it runs, picture fixes that cost speed.
+            Func<int, int> colLeft = c0 => (int)Math.Round(c0 * (W + 28) / 3.0);
+            string[] groups = {
+                L("Display", "Imagem", "Affichage"),
+                L("Performance", "Desempenho", "Performances"),
+                L("Picture fixes", "Correcoes de imagem", "Corrections d'image"),
+            };
+            for (int c = 0; c < groups.Length; c++)
+                page.Controls.Add(new Eyebrow(groups[c]) { Location = new Point(X + colLeft(c), y), Width = colLeft(c + 1) - colLeft(c) - 28 });
+            y += 26;
             Func<string, string, int, int, bool, CheckBox> T = (title, line, col, row, on) => {
-                var t = new OptionCard { Text = title, Line = line, Checked = on, Location = new Point(X + col * (half + 10), y + row * 66), Size = new Size(half, 58) };
+                var t = new OptionCard { Text = title, Line = line, Checked = on, Location = new Point(X + colLeft(col), y + row * 70), Size = new Size(colLeft(col + 1) - colLeft(col) - 28, 70) };
                 t.CheckedChanged += (s, e) => Refresh2();
                 page.Controls.Add(t);
                 return t;
             };
             borderlessBox = T(L("★ Borderless Fullscreen", "★ Ecra inteiro sem bordas"), L("Native desktop presentation", "Apresentacao nativa no ambiente de trabalho"), 0, 0, true);
             fps60Box = T(L("★ Unlock 60 FPS Clock", "★ Desbloquear relogio de 60 FPS"), L("Decoupled simulation tick (no 30 FPS cap)", "Tick de simulacao separado (sem limite de 30 FPS)"), 0, 1, true);
-            smoothBox = T(L("Frame generation", "Geracao de frames"), FrameGenLine(), 0, 2, true);
-            panelBox = T(L("★ Diagnostics Overlay (F3)", "★ Overlay de diagnostico (F3)"), L("FPS, frame time, VRAM & RAM", "FPS, tempo de frame, VRAM e RAM"), 0, 3, true);
-            reserveBox = T(L("Keep the most video memory", "Guardar o maximo de VRAM"), L("Windows reserves video memory for the game", "O Windows reserva VRAM para o jogo"), 0, 4, true);
-            fightsBox = T(L("★ Crowds and fights", "★ Multidoes e lutas"), L("2 GB of the game's buffers on the card", "2 GB dos buffers do jogo na placa"), 1, 0, true);
-            qualityBox = T(L("Anti-stretch", "Anti-esticados"), L("Fewer stretched bodies; several FPS slower", "Menos corpos esticados; varios FPS mais lento"), 1, 1, false);
+            panelBox = T(L("★ Diagnostics Overlay (F3)", "★ Overlay de diagnostico (F3)"), L("FPS, frame time, VRAM & RAM", "FPS, tempo de frame, VRAM e RAM"), 0, 2, true);
+            smoothBox = T(L("Frame generation", "Geracao de frames"), FrameGenLine(), 0, 3, true);
+            reserveBox = T(L("Keep the most video memory", "Guardar o maximo de VRAM"), L("Windows reserves video memory for the game", "O Windows reserva VRAM para o jogo"), 1, 0, true);
+            cpuBox = T(L("★ More CPU cores", "★ Mais nucleos do processador"), L("Half the cores copy the game's memory (+1 FPS)", "Metade dos nucleos copia a memoria do jogo (+1 FPS)"), 1, 1, true);
+            warmBox = T(L("Load pipelines before the game", "Carregar pipelines antes do jogo"), L("No stutter the first time you see a place", "Sem engasgos a primeira vez que ves um sitio"), 1, 2, true);
+            fightsBox = T(L("★ Crowds and fights", "★ Multidoes e lutas"), L("2 GB of the game's buffers on the card", "2 GB dos buffers do jogo na placa"), 1, 3, true);
+            // Anti-stretch is off for everyone and hidden since 0.3.14 (it turned the picture cyan and dark): the
+            // box stays for the code that reads it, out of sight, and the picture fixes move up into its place.
+            qualityBox = T(L("Anti-stretch", "Anti-esticados"), L("Fewer stretched bodies; several FPS slower", "Menos corpos esticados; varios FPS mais lento"), 2, 3, false);
             qualityBox.Visible = false;
-            facesBox = T(L("Rainbow-face fix", "Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 1, 2, false);
-            loadingBox = T(L("Fast loading (experimental)", "Carregamento rapido (experimental)"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 1, 3, false);
-            warmBox = T(L("Load pipelines before the game", "Carregar pipelines antes do jogo"), L("No stutter the first time you see a place", "Sem engasgos a primeira vez que ves um sitio"), 1, 4, true);
-            cpuBox = T(L("★ More CPU cores", "★ Mais nucleos do processador"), L("Half the cores copy the game's memory (+1 FPS)", "Metade dos nucleos copia a memoria do jogo (+1 FPS)"), 0, 5, true);
-            y += 6 * 66 + 2;
-            explain = new Label { Location = new Point(X, y), Size = new Size(W, 40), ForeColor = Theme.Cyan, BackColor = Theme.Back, Font = Theme.Ui(9f),
-                Text = L("Point at an option to see what it does. ★ marks what was tested on edupode's PC (RTX 5070 Ti laptop).", "Passa o rato por uma opcao para ver o que faz. ★ marca o que foi testado no PC do edupode (portatil RTX 5070 Ti).") };
+            facesBox = T(L("Rainbow-face fix", "Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 2, 0, false);
+            loadingBox = T(L("Fast loading (experimental)", "Carregamento rapido (experimental)"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 2, 1, false);
+            y += 4 * 70 + 14;
+            explain = new Label { Location = new Point(X, y), Size = new Size(W, 40), ForeColor = Theme.Muted, BackColor = Theme.Back, Font = Theme.Ui(9f),
+                Text = L("Point at an option for the details. Tested: tried on edupode's PC (RTX 5070 Ti laptop).", "Passa o rato por uma opcao para ver os detalhes. Testado: experimentado no PC do edupode (portatil RTX 5070 Ti).", "Survole une option pour les détails. Testé : essayé sur le PC d'edupode (portable RTX 5070 Ti).") };
             page.Controls.Add(explain);
             var tipsBox = new ToolTip { AutoPopDelay = 20000, InitialDelay = 300 };
             foreach (var kv in Explanations())
@@ -528,18 +762,44 @@ namespace VIctoryLauncher
                 tipsBox.SetToolTip(t, text);
                 t.MouseEnter += (s, e) => { explain.Text = text; };
             }
-            y += 46;
+            y += 56;
 
-            page.Controls.Add(new Heading(L("Activity", "Atividade")) { Location = new Point(X, y), Width = W });
-            y += 30;
-            logBox = new TextBox { Location = new Point(X, y), Size = new Size(W, 120), Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BackColor = Theme.Card, ForeColor = Theme.Dim, BorderStyle = BorderStyle.FixedSingle, Font = Theme.Mono(8.5f) };
-            page.Controls.Add(logBox);
-            y += 128;
+            // Activity: the loading bar shows while a task runs; the log stays folded until asked for.
+            page.Controls.Add(new Rule { Location = new Point(X, y), Width = W });
+            y += 18;
+            page.Controls.Add(new Heading(L("Activity", "Atividade", "Activité")) { Location = new Point(X, y + 3), Width = 300, Hair = false });
+            var showLog = new Pill { Text = L("Show activity", "Mostrar atividade", "Afficher l'activité"), Location = new Point(X + W - 190, y), Size = new Size(190, 32) };
+            page.Controls.Add(showLog);
+            y += 42;
             loadBar = new LoadBar { Location = new Point(X, y), Size = new Size(W, 26), Visible = false };
             page.Controls.Add(loadBar);
-            page.Controls.Add(new Label { Location = new Point(X, y + 36), Size = new Size(10, 10), BackColor = Theme.Back });
+            y += 34;
+            logBox = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, ForeColor = Theme.Dim, Font = Theme.Mono(8.5f) };
+            logPanel = FieldFor(logBox, X, y, W, 160, true);
+            Kit.Dark(logBox, "DarkMode_Explorer");
+            logPanel.Visible = false;
+            page.Controls.Add(logPanel);
+            loadBarAnchor = showLog;
+            showLog.Click += (s, e) => {
+                // Placed again under the button first: a hidden control is not moved when the page scrolls.
+                if (!logPanel.Visible) logPanel.Top = showLog.Top + 76;
+                logPanel.Visible = !logPanel.Visible;
+                showLog.Text = logPanel.Visible ? L("Hide activity", "Esconder atividade", "Masquer l'activité") : L("Show activity", "Mostrar atividade", "Afficher l'activité");
+                showLog.Invalidate();
+                if (logPanel.Visible) page.ScrollControlIntoView(logPanel);
+            };
+            page.Controls.Add(new Label { Location = new Point(X, y + 8), Size = new Size(10, 10), BackColor = Theme.Back });
+            Fluid(page, X, W, null);
             return page;
         }
+
+        // Where the poster's buttons sit (PLAY at its left margin, Setup beside it).
+        const int HeroButtonsY = 256;
+        Pill heroGhost, heroAuto;
+        Panel footPanel;
+        Action layoutFoot;
+
+        Field logPanel;
 
         Label explain;
 
@@ -601,48 +861,56 @@ namespace VIctoryLauncher
         Panel MemoryPage()
         {
             var page = Page();
-            const int X = 24, W = 852;
-            int y = 20;
-            page.Controls.Add(new Heading(L("Video memory and RAM", "Memoria de video e RAM")) { Location = new Point(X, y), Width = W });
-            y += 32;
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Performance", "Desempenho", "Performances"), L("Memory", "Memoria", "Mémoire"), L("measured.", "medida.", "mesurée."), L("Video memory and RAM, and which apps are holding them.", "Memoria de video e RAM, e que apps as estao a ocupar.", "Mémoire vidéo et RAM, et quelles applis les occupent."));
             vramSummary = new Label { Location = new Point(X, y), Size = new Size(W, 46), ForeColor = Theme.Text, BackColor = Theme.Back, Font = new Font("Segoe UI Semibold", 10.5f) };
             page.Controls.Add(vramSummary);
-            y += 50;
+            y += 54;
             vramList = new ListView { Location = new Point(X, y), Size = new Size(W, 230), View = View.Details, CheckBoxes = true, FullRowSelect = true, BackColor = Theme.Card, ForeColor = Theme.Text, BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 10f), HeaderStyle = ColumnHeaderStyle.Nonclickable, OwnerDraw = true };
             vramList.Columns.Add(L("App", "App"), 230);
-            vramList.Columns.Add(L("Video memory", "VRAM"), 120, HorizontalAlignment.Right);
+            vramList.Columns.Add(L("Video memory", "VRAM"), 130, HorizontalAlignment.Right);
             vramList.Columns.Add("RAM", 110, HorizontalAlignment.Right);
-            vramList.Columns.Add(L("Note", "Nota"), 370);
+            vramList.Columns.Add(L("Note", "Nota"), 400);
             DarkHeader(vramList);
+            // The note column takes what the other three leave.
+            vramList.Resize += (s, e) => {
+                int rest = vramList.ClientSize.Width - vramList.Columns[0].Width - vramList.Columns[1].Width - vramList.Columns[2].Width;
+                if (rest > 120) vramList.Columns[3].Width = rest;
+            };
+            // Nothing big found: the empty list says so.
+            vramEmpty = new Label { Text = L("No app is holding much video memory or RAM.", "Nenhuma app ocupa muita VRAM ou RAM.", "Aucune appli n'occupe beaucoup de VRAM ou de RAM."),
+                TextAlign = ContentAlignment.MiddleCenter, ForeColor = Theme.Dim, BackColor = Theme.Card, Location = new Point(0, 40), Size = new Size(W, 60), Visible = false };
+            vramList.Controls.Add(vramEmpty);
+            vramList.Resize += (s, e) => vramEmpty.Width = vramList.ClientSize.Width;
             vramList.ItemCheck += (s, e) => {
                 var u = vramList.Items[e.Index].Tag as MemoryUser;
                 if (u != null && u.Protected) e.NewValue = CheckState.Unchecked;
             };
             page.Controls.Add(vramList);
-            y += 240;
-            var refresh = new Pill { Text = L("Refresh", "Atualizar"), Location = new Point(X, y), Width = 140 };
+            y += 244;
+            var refresh = new Pill { Text = L("Refresh", "Atualizar", "Actualiser"), Location = new Point(X, y), Size = new Size(140, 34) };
             refresh.Click += (s, e) => ScanMemory();
             page.Controls.Add(refresh);
-            var close = new Pill { Text = L("Close the checked apps", "Fechar as apps marcadas"), Location = new Point(X + 150, y), Width = 220 };
+            var close = new Pill { Text = L("Close the checked apps", "Fechar as apps marcadas"), Location = new Point(X + 150, y), Size = new Size(230, 34) };
             close.Click += (s, e) => CloseChecked();
             page.Controls.Add(close);
-            y += 52;
+            y += 58;
 
             page.Controls.Add(new Heading("NVIDIA Smooth Motion") { Location = new Point(X, y), Width = W });
-            y += 32;
-            smoothStatus = new Label { Location = new Point(X, y), Size = new Size(W, 44), ForeColor = Theme.Text, BackColor = Theme.Back };
+            y += 34;
+            smoothStatus = new Label { Location = new Point(X, y), Size = new Size(W, 58), ForeColor = Theme.Text, BackColor = Theme.Back };
             page.Controls.Add(smoothStatus);
-            y += 46;
-            var smoothOn = new Pill { Text = L("Turn it on now", "Ligar agora"), Location = new Point(X, y), Width = 160 };
+            y += 62;
+            var smoothOn = new Pill { Text = L("Turn it on now", "Ligar agora"), Location = new Point(X, y), Size = new Size(170, 34) };
             smoothOn.Click += (s, e) => ApplySmooth(true, true);
             page.Controls.Add(smoothOn);
-            var smoothOff = new Pill { Text = L("Turn it off", "Desligar"), Location = new Point(X + 170, y), Width = 140 };
+            var smoothOff = new Pill { Text = L("Turn it off", "Desligar"), Location = new Point(X + 180, y), Size = new Size(150, 34) };
             smoothOff.Click += (s, e) => ApplySmooth(false, true);
             page.Controls.Add(smoothOff);
-            y += 52;
+            y += 58;
 
             page.Controls.Add(new Heading(L("Getting the most video memory", "Ter o maximo de VRAM")) { Location = new Point(X, y), Width = W });
-            y += 30;
+            y += 34;
             var tips = new Label { Location = new Point(X, y), Size = new Size(W, 250), ForeColor = Theme.Dim, BackColor = Theme.Back };
             tips.Text = string.Join("\r\n", Pt ? new[] {
                 "Mais VRAM livre = mais texturas na placa = menos coisas pretas, texturas lisas e recarregamentos.",
@@ -673,8 +941,18 @@ namespace VIctoryLauncher
                 "•  Smooth Motion is written into the driver's profile for victory.exe (as NVIDIA Profile Inspector does): no NVIDIA App needed.",
             });
             page.Controls.Add(tips);
+            var tipsEnd = new Label { Location = new Point(X, y + 260), Size = new Size(10, 10), BackColor = Theme.Back };
+            page.Controls.Add(tipsEnd);
+            Fluid(page, X, W, w => {
+                // The tips wrap with the window: the label is as tall as its text.
+                var h = TextRenderer.MeasureText(tips.Text, tips.Font, new Size(w, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height;
+                tips.Height = h + 6;
+                tipsEnd.Top = tips.Bottom + 4;
+            });
             return page;
         }
+
+        Label vramEmpty;
 
         static void DarkHeader(ListView list)
         {
@@ -799,6 +1077,7 @@ namespace VIctoryLauncher
                         vramList.Items.Add(item);
                     }
                     vramList.EndUpdate();
+                    vramEmpty.Visible = vramList.Items.Count == 0;
                 }));
             }) { IsBackground = true }.Start();
         }
@@ -855,14 +1134,13 @@ namespace VIctoryLauncher
         Panel ControlsPage()
         {
             var page = Page();
-            const int X = 24, W = 852;
-            int y = 20;
-            page.Controls.Add(new Heading(L("Controls, by what you are doing", "Controlos, pelo que estas a fazer", "Commandes, selon ce que tu fais")) { Location = new Point(X, y), Width = W });
-            y += 30;
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Controls", "Controlos", "Commandes"), L("Controls", "Controlos", "Commandes"), L("by what you do.", "pelo que fazes.", "selon l'action."), null);
             page.Controls.Add(Small(L("Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this.",
                                       "Teclado e rato, e o botao do comando Xbox de cada um. Um comando ligado ao PC substitui tudo isto.",
-                                      "Clavier et souris, et le bouton de la manette Xbox pour chacun. Une manette branchée au PC remplace tout cela."), X, y, W));
-            y += 30;
+                                      "Clavier et souris, et le bouton de la manette Xbox pour chacun. Une manette branchée au PC remplace tout cela."), X, y, W) );
+            page.Controls[page.Controls.Count - 1].Height = 38;
+            y += 40;
             Func<string, string, string, string[]> row = (what, key, pad) => new[] { what, key, pad };
             var groups = new List<Tuple<string, string[][]>> {
                 Tuple.Create(L("On foot", "A pe", "À pied"), new[] {
@@ -915,46 +1193,52 @@ namespace VIctoryLauncher
             foreach (var g in groups)
             {
                 page.Controls.Add(new Heading(g.Item1) { Location = new Point(X, y), Width = W });
-                y += 30;
+                y += 32;
                 foreach (var r in g.Item2)
                 {
-                    page.Controls.Add(new Label { Text = r[0], Location = new Point(X + 8, y + 6), Size = new Size(470, 22), ForeColor = Theme.Text, BackColor = Theme.Back, Font = Theme.Ui(9.75f), AutoEllipsis = true });
-                    page.Controls.Add(new KeyCap { Text = r[1], Location = new Point(X + 490, y + 2), Size = new Size(210, 28) });
-                    page.Controls.Add(new KeyCap { Text = r[2], Pad = true, Location = new Point(X + 712, y + 2), Size = new Size(140, 28) });
+                    page.Controls.Add(new Label { Text = r[0], Location = new Point(X + 8, y + 4), Size = new Size(500, 22), ForeColor = Theme.Text, BackColor = Theme.Back, Font = Theme.Ui(9.75f), AutoEllipsis = true });
+                    page.Controls.Add(new KeyCap { Text = r[1], Location = new Point(X + 520, y), Size = new Size(220, 28) });
+                    page.Controls.Add(new KeyCap { Text = r[2], Pad = true, Location = new Point(X + 752, y), Size = new Size(148, 28) });
                     y += 34;
                 }
-                y += 10;
+                y += 12;
             }
             page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(10, 10), BackColor = Theme.Back });
+            Fluid(page, X, W, null);
             return page;
         }
         Panel HelpPage()
         {
             var page = Page();
-            const int X = 28, W = 900;
-            int y = 18;
-            page.Controls.Add(new Heading(L("Help: everything the launcher does", "Ajuda: tudo o que o launcher faz")) { Location = new Point(X, y), Width = W });
-            y += 32;
-            var discord = new Pill { Main = true, Text = L("Send errors (GitHub / Discord)", "Enviar erros (GitHub / Discord)"), Location = new Point(X, y), Size = new Size(220, 38) };
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Help", "Ajuda", "Aide"), L("Help", "Ajuda", "Aide"), L("when you need it.", "quando precisares.", "quand il faut."), L("Everything the launcher does, and how to reach us when something breaks.", "Tudo o que o launcher faz, e como falar connosco quando algo avaria.", "Tout ce que fait le launcher, et comment nous joindre quand quelque chose casse."));
+            var discord = new Pill { Main = true, Text = L("Send errors (GitHub / Discord)", "Enviar erros (GitHub / Discord)"), Location = new Point(X, y), Size = new Size(240, 38) };
             discord.Click += (s, e) => ReportErrors();
             page.Controls.Add(discord);
-            var join = new Pill { Text = L("Join the Discord", "Entrar no Discord"), Location = new Point(X + 230, y), Size = new Size(170, 38) };
+            var join = new Pill { Text = L("Join the Discord", "Entrar no Discord"), Location = new Point(X + 250, y), Size = new Size(170, 38) };
             join.Click += (s, e) => OpenUrl(DiscordInvite);
             page.Controls.Add(join);
-            var logs = new Pill { Text = L("Open the logs folder", "Abrir a pasta dos logs"), Location = new Point(X + 410, y), Size = new Size(190, 38) };
+            var logs = new Pill { Text = L("Open the logs folder", "Abrir a pasta dos logs"), Location = new Point(X + 430, y), Size = new Size(200, 38) };
             logs.Click += (s, e) => { Directory.CreateDirectory(Path.Combine(dataRoot, "logs")); OpenUrl(Path.Combine(dataRoot, "logs")); };
             page.Controls.Add(logs);
-            var news = new Pill { Text = L("What's new", "Novidades", "Nouveautés"), Location = new Point(X + 610, y), Size = new Size(130, 38) };
+            var news = new Pill { Text = L("What's new", "Novidades", "Nouveautés"), Location = new Point(X + 640, y), Size = new Size(120, 38) };
             news.Click += (s, e) => ShowWhatsNew();
             page.Controls.Add(news);
-            var safe = new Pill { Text = L("Is it safe?", "E seguro?", "Est-ce sûr ?"), Location = new Point(X + 750, y), Size = new Size(130, 38) };
+            var safe = new Pill { Text = L("Is it safe?", "E seguro?", "Est-ce sûr ?"), Location = new Point(X + 770, y), Size = new Size(130, 38) };
             safe.Click += (s, e) => OpenUrl(SafetyUrl);
             page.Controls.Add(safe);
-            y += 52;
+            y += 54;
             var text = new TextBox { Location = new Point(X, y), Size = new Size(W, 1180), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None, ForeColor = Theme.Text, BackColor = Theme.Back, Font = Theme.Ui(10f), ScrollBars = ScrollBars.None, TabStop = false };
             text.Text = string.Join("\r\n", FunctionList().Concat(new[] { "", L("ABOUT", "SOBRE"), L("Julia's Launcher is edupode's remake, built on the work of:", "O Julia's Launcher e o remake do edupode, feito com o trabalho de:") }).Concat(Credits()).ToArray());
             page.Controls.Add(text);
-            page.Controls.Add(new Label { Location = new Point(X, y + 1190), Size = new Size(10, 10), BackColor = Theme.Back });
+            var helpEnd = new Label { Location = new Point(X, y + 1190), Size = new Size(10, 10), BackColor = Theme.Back };
+            page.Controls.Add(helpEnd);
+            Fluid(page, X, W, w => {
+                // Long lines wrap with the window: the text is as tall as it needs.
+                var h = TextRenderer.MeasureText(text.Text, text.Font, new Size(w - 8, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height;
+                text.Height = h + 16;
+                helpEnd.Top = text.Bottom + 4;
+            });
             return page;
         }
 
@@ -1188,13 +1472,15 @@ namespace VIctoryLauncher
 
         void Refresh2()
         {
+            // The list of executables starts hidden: placed beside the status line again (a hidden control is not moved when the page scrolls).
+            if (exeBox != null && gameStatus != null && !exeBox.Visible) exeBox.Top = gameStatus.Top - 2;
             RefreshExes();
             bool game = gameBox.Text.Trim().Length > 0 && File.Exists(GameExe);
             int count = exeBox != null && exeBox.Visible ? exeBox.Items.Count : 0;
             gameStatus.Text = !game ? L("Choose the folder of your dump.", "Escolhe a pasta do teu dump.")
                 : exeProblem != null ? "✗  " + exeProblem
                 : count > 1 ? string.Format(L("✓  Game found: {0} executables, choose one on the right.", "✓  Jogo encontrado: {0} executaveis, escolhe um a direita."), count)
-                : L("✓  Game found.", "✓  Jogo encontrado.");
+                : L("✓  Game found", "✓  Jogo encontrado", "✓  Jeu trouvé") + "  ·  " + Path.GetFileName(GameExe);
             gameStatus.ForeColor = !game ? Theme.Dim : exeProblem != null ? Theme.Warn : Theme.Good;
             gameHeading.Note = game ? Path.GetFileName(GameExe) : "";
             gameHeading.Invalidate();
@@ -1210,20 +1496,23 @@ namespace VIctoryLauncher
             presetHeading.Note = PresetSummary();
             presetHeading.Invalidate();
             var state = State();
+            // A game running (or one just started): the animation clock stops altogether.
+            Anim.GameRunning = state != GameState.None || gameProc != null;
+            Anim.Wake();
             // A stuck session never keeps PLAY off: PLAY closes it first.
             bool ready = game && exe != null && state != GameState.Running && !busyNow && !setupBusy;
             playButton.Enabled = ready;
             if (prepareButton != null) { prepareButton.Enabled = ready && state == GameState.None; prepareButton.Invalidate(); }
-            playButton.Text = state == GameState.Running ? L("RUNNING", "A CORRER") : busyNow ? L("WAIT...", "ESPERA...")
-                : state == GameState.Stuck ? L("CLOSE AND PLAY", "FECHAR E JOGAR") : L("▶  PLAY", "▶  JOGAR");
+            playButton.Text = state == GameState.Running ? L("Running", "A correr", "En cours") : busyNow ? L("Wait...", "Espera...", "Attends...")
+                : state == GameState.Stuck ? L("Close and play  →", "Fechar e jogar  →", "Fermer et jouer  →") : L("Play  →", "Jogar  →", "Jouer  →");
             closeButton.Visible = state != GameState.None;
             closeButton.Text = state == GameState.Stuck ? L("Close stuck game", "Fechar jogo preso") : L("Close game", "Fechar o jogo");
             if (tips == null) tips = new ToolTip();
-            tips.SetToolTip(playButton, state == GameState.Stuck ? L("A VIctory session stopped answering: PLAY closes it and starts again.", "Uma sessao do VIctory deixou de responder: JOGAR fecha-a e arranca de novo.")
-                : ready ? "" : !game ? L("Choose the game folder first (Auto-detect).", "Escolhe primeiro a pasta do jogo (Detetar).")
+            string why = ready ? "" : !game ? L("Choose the game folder first (Auto-detect).", "Escolhe primeiro a pasta do jogo (Detetar).")
                 : exe == null ? L("Build VIctory first (Setup).", "Compila o VIctory primeiro (Preparar).")
                 : state == GameState.Running ? L("The game is already running ('Close game' ends it).", "O jogo ja esta a correr ('Fechar o jogo' termina-o).")
-                : L("Wait for the current task to finish.", "Espera que a tarefa atual acabe."));
+                : L("Wait for the current task to finish.", "Espera que a tarefa atual acabe.");
+            tips.SetToolTip(playButton, state == GameState.Stuck ? L("A VIctory session stopped answering: PLAY closes it and starts again.", "Uma sessao do VIctory deixou de responder: JOGAR fecha-a e arranca de novo.") : why);
             playButton.Invalidate();
             closeButton.Invalidate();
 
@@ -1250,9 +1539,24 @@ namespace VIctoryLauncher
                 warnFix.Visible = false;
             }
             warnPanel.Invalidate();
-            footerState.Text = state == GameState.Running ? "RUNNING" : state == GameState.Stuck ? "STUCK" : busyNow ? "WORKING" : ready ? "READY" : "NOT READY";
-            footerState.ForeColor = state == GameState.Running ? Theme.Cyan : state == GameState.Stuck ? Theme.Warn : busyNow ? Theme.Cyan : ready ? Theme.Good : Theme.Warn;
-            footerStatus.Text = string.Format("{0} ({1})  ·  {2:0} GB VRAM  ·  {3:0} GB RAM  ·  {4}", Selected.Name, Selected.Custom ? CustomTag() : Selected.Tag, vramGb, ramGb, EngineName);
+            // The foot: state, preset, engine and hardware as tiny labels; a PLAY that cannot be pressed says why.
+            Color stateColor = state == GameState.Running ? Theme.Cyan : state == GameState.Stuck ? Theme.Warn : busyNow ? Theme.Cyan : ready ? Theme.Good : Theme.Warn;
+            string stateText = state == GameState.Running ? L("Running", "A correr", "En cours") : state == GameState.Stuck ? L("Stuck", "Preso", "Bloqué") : busyNow ? L("Working", "A trabalhar", "En cours de travail") : ready ? L("Ready", "Pronto", "Prêt") : L("Not ready", "Nao esta pronto", "Pas prêt");
+            footMeta.Set(stateText, stateColor, string.Format("{0} ({1})", Selected.Name, Selected.Custom ? CustomTag() : Selected.Tag), EngineName,
+                string.Format("{0:0} GB VRAM  ·  {1:0} GB RAM", vramGb, ramGb), !ready && why.Length > 0 && state != GameState.Running ? why : "");
+            // The poster: the headline, the sentence, the steps on the rings, the second button.
+            bool stepsOk = statusStrip.States.All(v => v == 1);
+            banner.Steps = statusStrip.Items; banner.States = statusStrip.States;
+            banner.Title = state == GameState.Running ? L("Playing", "A jogar", "En jeu") : stepsOk ? L("Ready", "Pronto", "Prêt") : L("Almost", "Quase", "Presque");
+            banner.Accent = state == GameState.Running ? L("right now.", "agora mesmo.", "en ce moment.") : stepsOk ? L("when you are.", "quando quiseres.", "quand tu veux.") : L("there.", "la.", "là.");
+            banner.Status = state == GameState.Running ? L("The game is running. Close it from the bar below when you are done.", "O jogo esta a correr. Fecha-o na barra em baixo quando acabares.", "Le jeu tourne. Ferme-le depuis la barre en bas quand tu as fini.")
+                : busyNow || setupBusy ? L("A task is running. Play unlocks when it finishes.", "Uma tarefa esta a correr. O Jogar liberta-se quando acabar.", "Une tâche est en cours. Jouer se débloque quand elle finit.")
+                : ready && missing.Count == 0 ? L("Game, engine, shaders and Windows are all set. Pick a preset below, or just press play.", "Jogo, motor, shaders e Windows estao prontos. Escolhe uma predefinicao em baixo, ou carrega em jogar.", "Jeu, moteur, shaders et Windows sont prêts. Choisis un préréglage plus bas, ou lance simplement.")
+                : ready ? L("Ready to launch, but running without: ", "Pronto a arrancar, mas a jogar sem: ", "Prêt à lancer, mais sans : ") + string.Join(" · ", missing.ToArray())
+                : why;
+            heroGhost.Text = !stepsOk || missing.Count > 0 ? L("Fix it", "Corrigir", "Corriger") : L("Setup", "Preparar", "Préparer");
+            heroGhost.Invalidate();
+            banner.Invalidate();
         }
 
         ComboBox outputBox;
@@ -1331,21 +1635,32 @@ namespace VIctoryLauncher
             return pic + " · " + (sixty ? L("60 FPS clock", "relogio de 60 FPS") : L("30 FPS clock", "relogio de 30 FPS"));
         }
 
+        // The Play page's engine switch, kept in step with the Hardware page's (and the automatic switch).
+        Action showEnginePills;
+
         void UpdateBanner()
         {
+            if (showEnginePills != null) showEnginePills();
             if (banner == null) return;
-            var chips = new List<string>();
+            // The hardware along the poster's bottom rule: a label over its value (a warning keeps its colour).
+            var labels = new List<string>();
+            var values = new List<string>();
             var colors = new List<Color>();
-            chips.Add(gpuName); colors.Add(Theme.Dim);
-            chips.Add(string.Format("{0:0} GB VRAM", vramGb)); colors.Add(vramGb >= 10 ? Theme.Dim : Theme.Warn);
-            chips.Add(string.Format("{0:0} GB RAM", ramGb)); colors.Add(ramGb >= 24 ? Theme.Dim : Theme.Warn);
-            chips.Add(RebarText()); colors.Add(rebar ? Theme.Dim : Theme.Warn);
-            chips.Add(FrameGenChip()); colors.Add(Theme.Dim);
-            if (UseAmdEngine) { chips.Add("AMD · Belobug"); colors.Add(Theme.Cyan); }
+            Action<string, string, Color> fact = (l, v, c) => { labels.Add(l); values.Add(v); colors.Add(c); };
+            fact(L("Graphics card", "Placa grafica", "Carte graphique"), gpuName, Theme.Muted);
+            fact(L("Video memory", "Memoria de video", "Mémoire vidéo"), string.Format("{0:0} GB", vramGb), vramGb >= 10 ? Theme.Muted : Theme.Warn);
+            fact("RAM", string.Format("{0:0} GB", ramGb), ramGb >= 24 ? Theme.Muted : Theme.Warn);
+            var rb = RebarText();
+            fact("Resizable BAR", rb.StartsWith("ReBAR ") ? rb.Substring(6) : rb, rebar ? Theme.Muted : Theme.Warn);
+            var fgText = FrameGenChip();
+            foreach (var pre in new[] { "Frame gen ", "Geracao de frames " }) if (fgText.StartsWith(pre)) fgText = fgText.Substring(pre.Length);
+            fact(L("Frame generation", "Geracao de frames", "Génération d'images"), fgText, Theme.Muted);
+            fact(L("Engine", "Motor", "Moteur"), UseAmdEngine ? "AMD · Belobug" : L("Standard", "Padrao", "Standard"), UseAmdEngine ? Theme.Cyan : Theme.Muted);
             var fg = smoothBox as OptionCard;
             if (fg != null) { fg.Line = FrameGenLine(); fg.Enabled = FrameGenAvailable; fg.Invalidate(); }
-            banner.Chips = chips.ToArray();
-            banner.ChipColors = colors.ToArray();
+            banner.FactLabels = labels.ToArray();
+            banner.FactValues = values.ToArray();
+            banner.FactColors = colors.ToArray();
             banner.Invalidate();
         }
 
@@ -1428,24 +1743,71 @@ namespace VIctoryLauncher
             UpdateSmooth();
         }
 
+        // The program's output; "" if it cannot start or has not ended in 5 seconds (then it is killed).
         static string RunCapture(string file, string args)
         {
             try
             {
-                var p = Process.Start(new ProcessStartInfo(file, args) { UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true });
-                var s = p.StandardOutput.ReadToEnd();
-                p.WaitForExit(5000);
-                return s;
+                using (var p = Process.Start(new ProcessStartInfo(file, args) { UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true }))
+                {
+                    var sb = new StringBuilder();
+                    p.OutputDataReceived += (s, e) => { if (e.Data != null) lock (sb) sb.Append(e.Data).Append("\r\n"); };
+                    p.BeginOutputReadLine();
+                    if (!p.WaitForExit(5000))
+                    {
+                        try { p.Kill(); } catch (Exception) { }
+                        return "";
+                    }
+                    p.WaitForExit(2000); // lets the last output lines arrive
+                    lock (sb) return sb.ToString();
+                }
             }
             catch (Exception) { return ""; }
         }
 
         bool busyNow;
 
+        // Set when the window is closing (the form's FormClosing / FormClosed): worker threads read them.
+        volatile bool closing, closePrompt;
+
+        // True once the window is closing or gone: no tool is started then. Called from worker threads.
+        bool ClosingNow()
+        {
+            if (closePrompt && !closing && InvokeRequired)
+                for (int i = 0; i < 60 && closePrompt && !closing && !IsDisposed; i++) Thread.Sleep(50); // the player is being asked: wait for the answer
+            return closing || IsDisposed || Disposing;
+        }
+
+        // Posts to the window from a worker thread; nothing happens (and nothing throws) when the window is gone.
+        void Post(Action a)
+        {
+            try { if (!IsDisposed && !Disposing && IsHandleCreated) BeginInvoke(a); } catch (Exception) { }
+        }
+
         void Log(string line)
         {
-            if (InvokeRequired) { BeginInvoke(new Action<string>(Log), line); return; }
-            logBox.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + line + "\r\n");
+            try
+            {
+                if (IsDisposed) return;
+                if (InvokeRequired) { BeginInvoke(new Action<string>(Log), line); return; }
+                logBox.AppendText(DateTime.Now.ToString("HH:mm:ss") + "  " + line + "\r\n");
+            }
+            catch (Exception) { }
+        }
+
+        // launcher.ini is read and rewritten from the window and from worker threads: one at a time.
+        static readonly object settingsLock = new object();
+
+        // Writes through a temporary file, so a crash in the middle cannot leave launcher.ini empty.
+        static void WriteLinesAtomic(string path, string[] lines)
+        {
+            var tmp = path + ".tmp";
+            try
+            {
+                File.WriteAllLines(tmp, lines);
+                if (File.Exists(path)) File.Replace(tmp, path, null); else File.Move(tmp, path);
+            }
+            catch (Exception) { try { File.Delete(tmp); } catch (Exception) { } throw; }
         }
 
         // ---------------------------------------------------------------- environment
@@ -1603,6 +1965,8 @@ namespace VIctoryLauncher
 
         Process Start(string args, string logFile, Action<string> onLine)
         {
+            // The window is closing (its tools were just stopped): nothing new starts. The callers catch this.
+            if (ClosingNow()) throw new InvalidOperationException(L("The launcher is closing.", "O launcher esta a fechar.", "Le lanceur se ferme."));
             var psi = new ProcessStartInfo(VictoryExe, args) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, WorkingDirectory = UseAmdEngine ? AmdEngineDir : root };
             foreach (var kv in Environment2()) psi.EnvironmentVariables[kv.Key] = kv.Value;
             Directory.CreateDirectory(Path.GetDirectoryName(logFile));
@@ -1619,6 +1983,7 @@ namespace VIctoryLauncher
             p.Start();
             p.BeginOutputReadLine();
             p.BeginErrorReadLine();
+            if (!args.StartsWith("run ")) lock (tools) { tools.RemoveAll(t => { try { return t.HasExited; } catch (Exception) { return true; } }); tools.Add(p); }
             return p;
         }
 
@@ -1653,6 +2018,7 @@ namespace VIctoryLauncher
                                         "O Preparar ainda esta a trabalhar (a compilar o VIctory ou a preparar shaders). O JOGAR abre quando acabar."), "Julia's Launcher");
                 return;
             }
+            if (!ClearOtherPreparations()) return;
             SaveSettings();
             var state = State();
             if (state == GameState.Running)
@@ -1693,6 +2059,9 @@ namespace VIctoryLauncher
             AskToShare();
             // Once: a log of each game sent when it closes (SessionLogs.cs).
             AskSessionLogs();
+            // Little RAM free: what holds it, once (Session.cs). The first game on an engine: how its pipelines get built.
+            if (!HeavyAppsCheck()) return;
+            PipelineHint();
             // The saves as they are, before the game can change them (Saves.cs).
             BackupSavesBeforePlay();
             long cardUsed;
@@ -1710,9 +2079,10 @@ namespace VIctoryLauncher
                 try
                 {
                     if (warmFirst) WarmWithBar(log);
+                    if (ClosingNow()) return;
                     var started = DateTime.Now;
                     var p = Start("run \"" + game + "\" --console series-s --execute", log);
-                    gameProc = p; gameHadWindow = false; windowGone = null;
+                    gameProc = p; gameHadWindow = false; windowGone = null; Anim.GameRunning = true;
                     WatchStart(log, p);
                     // From here the game's own state keeps PLAY off (RUNNING), not the launcher's task,
                     // so a game that ends badly never leaves PLAY waiting.
@@ -1728,6 +2098,7 @@ namespace VIctoryLauncher
                     if (code != 0)
                         Log(string.Format(L("The game ended with an error (code {0}). Log: {1}", "O jogo terminou com um erro (codigo {0}). Log: {1}"), code, log));
                     EngineFallback(code != 0 && (DateTime.Now - started).TotalMinutes < 3);
+                    if (ClosingNow()) return;
                     Log(L("Game closed. Preparing this session's pipelines for the next one...", "Jogo fechado. A preparar as pipelines desta sessao para a proxima..."));
                     var w = Start("warm --used", log);
                     afterWarm = w;
@@ -1743,8 +2114,8 @@ namespace VIctoryLauncher
                 }
                 finally
                 {
-                    if (busyNow) Busy(false);
-                    BeginInvoke(new Action(Refresh2));
+                    try { if (busyNow) Busy(false); } catch (Exception) { }
+                    Post(Refresh2);
                 }
             }) { IsBackground = true }.Start();
         }
@@ -1753,7 +2124,7 @@ namespace VIctoryLauncher
         void WarmWithBar(string log)
         {
             int total = 0;
-            BeginInvoke(new Action(() => { loadBar.Visible = true; loadBar.Set(0, L("Loading pipelines...", "A carregar pipelines...")); }));
+            BeginInvoke(new Action(() => { if (!loadBar.Visible && loadBarAnchor != null) loadBar.Top = loadBarAnchor.Top + 42; loadBar.Visible = true; loadBar.Set(0, L("Loading pipelines...", "A carregar pipelines...")); }));
             var w = Start("warm --used", log, line => {
                 var m = Regex.Match(line, @"; (\d+) to make");
                 if (m.Success) total = int.Parse(m.Groups[1].Value);
@@ -1796,9 +2167,12 @@ namespace VIctoryLauncher
         {
             try
             {
-                if (!File.Exists(settingsFile)) return null;
-                foreach (var line in File.ReadAllLines(settingsFile))
-                    if (line.StartsWith(key + "=")) return Unmangle(line.Substring(key.Length + 1));
+                lock (settingsLock)
+                {
+                    if (!File.Exists(settingsFile)) return null;
+                    foreach (var line in File.ReadAllLines(settingsFile))
+                        if (line.StartsWith(key + "=")) return Unmangle(line.Substring(key.Length + 1));
+                }
             }
             catch (Exception) { }
             return null;
@@ -1873,8 +2247,11 @@ namespace VIctoryLauncher
                 };
                 // The other keys (shaders=, engine=, custom=, source=...) are kept: this used to drop them.
                 var keys = new HashSet<string>(mine.Select(l => l.Substring(0, l.IndexOf('=') + 1)));
-                var others = File.Exists(settingsFile) ? File.ReadAllLines(settingsFile).Where(l => l.Contains("=") && !keys.Contains(l.Substring(0, l.IndexOf('=') + 1))) : new string[0];
-                File.WriteAllLines(settingsFile, mine.Concat(others).ToArray());
+                lock (settingsLock)
+                {
+                    var others = File.Exists(settingsFile) ? File.ReadAllLines(settingsFile).Where(l => l.Contains("=") && !keys.Contains(l.Substring(0, l.IndexOf('=') + 1))).ToArray() : new string[0];
+                    WriteLinesAtomic(settingsFile, mine.Concat(others).ToArray());
+                }
             }
             catch (Exception) { }
         }

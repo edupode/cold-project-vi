@@ -1,4 +1,4 @@
-// Julia's Launcher: the Custom preset (Advanced Tweaks) and its profile codes. A code ("VI1-...") is the
+﻿// Julia's Launcher: the Custom preset (Advanced Tweaks) and its profile codes. A code ("VI1-...") is the
 // profile's values, each held to the values the page offers, with a checksum: a pasted code can set
 // nothing else and runs nothing.
 using System;
@@ -136,46 +136,63 @@ namespace VIctoryLauncher
         {
             LoadCustom();
             var page = Page();
-            const int X = 28, W = 900;
-            int y = 18;
-            page.Controls.Add(new Heading(L("Advanced Tweaks (Custom preset)", "Ajustes avancados (predefinicao Personalizado)")) { Location = new Point(X, y), Width = W });
-            y += 32;
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 36), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
-                Text = L("Your own values. They count when the Custom card is picked on the Play page. Lower values use less memory and give a softer picture.",
-                         "Os teus proprios valores. Contam quando o cartao Personalizado esta escolhido na pagina Jogar. Valores mais baixos usam menos memoria e dao uma imagem mais suave.") });
-            y += 44;
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Advanced Tweaks", "Ajustes avancados", "Réglages avancés"), L("Tweaks", "Ajustes", "Réglages"), L("of your own.", "so teus.", "à toi."), null);
+            var intro = Kit.Text(L("Your own values. They count when the Custom card is picked on the Play page. Lower values use less memory and give a softer picture.",
+                         "Os teus proprios valores. Contam quando o cartao Personalizado esta escolhido na pagina Jogar. Valores mais baixos usam menos memoria e dao uma imagem mais suave.",
+                         "Tes propres valeurs. Elles comptent quand la carte Personnalisé est choisie sur la page Jouer. Des valeurs plus basses utilisent moins de mémoire et donnent une image plus douce."),
+                         Theme.Ui(9.5f), Theme.Soft, Theme.Back, X, y, W);
+            page.Controls.Add(intro);
+            y += intro.Height + 14;
+
+            // The six values on one card: name, drop-down, and what it does (wrapped, never cut).
+            var values = new RoundCard { Location = new Point(X, y), Width = W };
+            int vy = 10;
+            const int labelW = 250, comboX = 284, comboW = 230, noteX = 534;
             Func<string, string, object[], ComboBox> row = (label, note, items) => {
-                page.Controls.Add(new Label { Location = new Point(X, y + 4), Size = new Size(250, 22), Text = label, ForeColor = Theme.Text, BackColor = Theme.Back, Font = Theme.UiBold(9.5f) });
-                var c = new ComboBox { Location = new Point(X + 260, y), Width = 220, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text, Font = Theme.Mono(9f) };
+                var nameFont = Theme.UiBold(9.5f);
+                var noteFont = Theme.Ui(9f);
+                int nameH = Kit.TextH(label, nameFont, labelW), noteH = Kit.TextH(note, noteFont, W - noteX - 20);
+                int h = Math.Max(48, Math.Max(nameH, noteH) + 16);
+                var nm = Kit.Text(label, nameFont, Theme.Text, Theme.Card, 20, vy + (h - nameH) / 2, labelW);
+                var c = new Dropdown { Location = new Point(comboX, 0), Width = comboW };
+                c.Top = vy + (h - c.Face) / 2;
                 c.Items.AddRange(items);
                 c.SelectedIndexChanged += (s, e) => ReadCustomFromPage();
-                page.Controls.Add(c);
-                page.Controls.Add(new Label { Location = new Point(X + 496, y + 4), Size = new Size(W - 496, 22), Text = note, ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(8.75f) });
-                y += 36;
+                var nt = Kit.Text(note, noteFont, Theme.Dim, Theme.Card, noteX, vy + (h - noteH) / 2, W - noteX - 20);
+                values.Controls.Add(nm); values.Controls.Add(c); values.Controls.Add(nt);
+                vy += h;
                 return c;
             };
-            cScale = row(L("World resolution", "Resolucao do mundo"), L("rebuilt to 1080p by the game's upscaler", "reconstruida para 1080p pelo upscaler do jogo"),
+            cScale = row(L("World resolution", "Resolucao do mundo", "Résolution du monde"), L("rebuilt to 1080p by the game's upscaler", "reconstruida para 1080p pelo upscaler do jogo", "reconstruite en 1080p par l'upscaler du jeu"),
                 new object[] { "1080p (1.0)", "810p (0.75)", "720p (0.667)", "540p (0.5)", "432p (0.4)" });
-            cTex = row(L("Largest texture", "Maior textura"), L("smaller: less video memory", "menor: menos VRAM"), new object[] { L("no cap", "sem limite"), "2048", "1024", "512" });
-            cBuf = row(L("Game buffers on the card", "Buffers do jogo na placa"), L("more: crowds and fights hold up", "mais: multidoes e lutas aguentam melhor"), new object[] { "512 MB", "768 MB", "1024 MB", "1536 MB", "2048 MB" });
-            cRipe = row(L("Texture blocks at once", "Blocos de texturas de cada vez"), L("2: less memory, 4: faster", "2: menos memoria, 4: mais rapido"), new object[] { "2", "4" });
-            cStage = row(L("Texture batch size", "Tamanho do lote de texturas"), L("smaller: less RAM", "menor: menos RAM"), new object[] { "64 MB", "128 MB", "384 MB" });
-            cFps = row(L("FPS clock", "Relogio de FPS"), L("60 lets the game pass 30 FPS", "60 deixa o jogo passar dos 30 FPS"), new object[] { "30", "60" });
-            cGuards = new OptionCard { Text = L("Memory guards", "Protecoes de memoria"), Line = L("Hold texture prefetch back early (16 GB of RAM or less)", "Travam cedo o pre-carregamento de texturas (16 GB de RAM ou menos)"), Location = new Point(X, y), Size = new Size((W - 10) / 2, 58) };
-            cLevels = new OptionCard { Text = L("Texture levels on demand", "Niveis de texturas a pedido"), Line = L("Less video memory, more pop-in", "Menos VRAM, mais texturas a aparecer tarde"), Location = new Point(X + (W - 10) / 2 + 10, y), Size = new Size((W - 10) / 2, 58) };
+            cTex = row(L("Largest texture", "Maior textura", "Plus grande texture"), L("smaller: less video memory", "menor: menos VRAM", "plus petite : moins de VRAM"), new object[] { L("no cap", "sem limite", "sans limite"), "2048", "1024", "512" });
+            cBuf = row(L("Game buffers on the card", "Buffers do jogo na placa", "Tampons du jeu sur la carte"), L("more: crowds and fights hold up", "mais: multidoes e lutas aguentam melhor", "plus : foules et combats tiennent mieux"), new object[] { "512 MB", "768 MB", "1024 MB", "1536 MB", "2048 MB" });
+            cRipe = row(L("Texture blocks at once", "Blocos de texturas de cada vez", "Blocs de textures à la fois"), L("2: less memory, 4: faster", "2: menos memoria, 4: mais rapido", "2 : moins de mémoire, 4 : plus rapide"), new object[] { "2", "4" });
+            cStage = row(L("Texture batch size", "Tamanho do lote de texturas", "Taille du lot de textures"), L("smaller: less RAM", "menor: menos RAM", "plus petit : moins de RAM"), new object[] { "64 MB", "128 MB", "384 MB" });
+            cFps = row(L("FPS clock", "Relogio de FPS", "Horloge FPS"), L("60 lets the game pass 30 FPS", "60 deixa o jogo passar dos 30 FPS", "60 laisse le jeu dépasser 30 FPS"), new object[] { "30", "60" });
+            values.Height = vy + 10;
+            page.Controls.Add(values);
+            y += values.Height + 14;
+
+            int half = (W - 10) / 2;
+            var guardsTitle = L("Memory guards", "Protecoes de memoria", "Protections mémoire");
+            cGuards = new OptionCard { Text = guardsTitle, Line = L("Hold texture prefetch back early (16 GB of RAM or less)", "Travam cedo o pre-carregamento de texturas (16 GB de RAM ou menos)", "Retiennent tôt le préchargement des textures (16 Go de RAM ou moins)"), Location = new Point(X, y), Size = new Size(half, 72) };
+            cLevels = new OptionCard { Text = L("Texture levels on demand", "Niveis de texturas a pedido", "Niveaux de textures à la demande"), Line = L("Less video memory, more pop-in", "Menos VRAM, mais texturas a aparecer tarde", "Moins de VRAM, plus d'apparitions tardives"), Location = new Point(X + half + 10, y), Size = new Size(half, 72) };
             cGuards.CheckedChanged += (s, e) => ReadCustomFromPage();
             cLevels.CheckedChanged += (s, e) => ReadCustomFromPage();
             page.Controls.Add(cGuards); page.Controls.Add(cLevels);
-            y += 70;
-            var use = new Pill { Main = true, Text = L("Play with these (Custom)", "Jogar com estes (Personalizado)"), Location = new Point(X, y), Size = new Size(250, 38) };
+            y += 72 + 18;
+
+            // The actions: play with these, back, and the presets to start from.
+            var useText = L("Play with these (Custom)", "Jogar com estes (Personalizado)", "Jouer avec ceux-ci (Personnalisé)");
+            var use = new Pill { Main = true, Text = useText, Size = new Size(Kit.PillW(useText, 9.5f, 230), 40) };
             use.Click += (s, e) => { SelectMode(ModeCustom); SaveSettings(); Show(PagePlay); };
-            page.Controls.Add(use);
-            var back = new Pill { Text = L("Back to Play", "Voltar a Jogar"), Location = new Point(X + 260, y + 2), Size = new Size(150, 34) };
+            var back = new Pill { Text = L("Back to Play", "Voltar a Jogar", "Retour à Jouer"), Size = new Size(150, 40) };
             back.Click += (s, e) => Show(PagePlay);
-            page.Controls.Add(back);
             Func<int, string> name = k => modes[k].Name;
-            var from = new ComboBox { Location = new Point(X + W - 260, y + 6), Width = 260, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
-            from.Items.Add(L("Start from a preset...", "Partir de uma predefinicao..."));
+            var from = new Dropdown { Width = 270 };
+            from.Items.Add(L("Start from a preset...", "Partir de uma predefinicao...", "Partir d'un préréglage..."));
             foreach (var k in new[] { 0, 1, 2, ModeUltraLow, 3 }) from.Items.Add(name(k));
             from.SelectedIndex = 0;
             from.SelectedIndexChanged += (s, e) => {
@@ -185,27 +202,40 @@ namespace VIctoryLauncher
                 SaveCustom(); RefreshCustom();
                 from.SelectedIndex = 0;
             };
+            int ny = Kit.Row(page, X, y, W - from.Width - 10, use, back);
+            from.Location = new Point(X + W - from.Width, y + (40 - from.Face) / 2);
             page.Controls.Add(from);
-            y += 56;
+            y = ny + 22;
 
-            page.Controls.Add(new Heading(L("Share a profile", "Partilhar um perfil")) { Location = new Point(X, y), Width = W });
-            y += 32;
-            codeBox = new TextBox { Location = new Point(X, y + 4), Width = W - 200, ReadOnly = true, BackColor = Theme.Card, ForeColor = Theme.Cyan, BorderStyle = BorderStyle.FixedSingle, Font = Theme.Mono(9.5f) };
-            page.Controls.Add(codeBox);
-            var copy = new Pill { Text = L("Copy my profile", "Copiar o meu perfil"), Location = new Point(X + W - 190, y), Size = new Size(190, 34) };
-            copy.Click += (s, e) => { Clipboard.SetText(custom.Code()); Log(L("Profile code copied: ", "Codigo do perfil copiado: ") + custom.Code()); };
-            page.Controls.Add(copy);
-            y += 46;
-            page.Controls.Add(Small(L("Paste a profile code here:", "Cola aqui um codigo de perfil:"), X, y, W));
-            y += 22;
-            pasteBox = new TextBox { Location = new Point(X, y + 4), Width = W - 200, BackColor = Theme.Card, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle, Font = Theme.Mono(9.5f) };
-            page.Controls.Add(pasteBox);
-            var apply = new Pill { Main = true, Text = L("Apply", "Aplicar"), Location = new Point(X + W - 190, y), Size = new Size(190, 34) };
+            page.Controls.Add(new Heading(L("Share a profile", "Partilhar um perfil", "Partager un profil")) { Location = new Point(X, y), Width = W });
+            y += 34;
+            var share = new RoundCard { Location = new Point(X, y), Width = W };
+            int sy = 18;
+            var copyText = L("Copy my profile", "Copiar o meu perfil", "Copier mon profil");
+            var applyText = L("Apply", "Aplicar", "Appliquer");
+            int btnW = Math.Max(Kit.PillW(copyText, 9.5f, 160), Kit.PillW(applyText, 9.5f, 160));
+            share.Controls.Add(Kit.Text(L("My profile code:", "O meu codigo de perfil:", "Mon code de profil :"), Theme.UiBold(9f), Theme.Dim, Theme.Card, 20, sy, W - 40));
+            sy += 24;
+            codeBox = new TextBox { ReadOnly = true, ForeColor = Theme.Cyan, Font = Theme.Mono(9.5f) };
+            Kit.Field(share, codeBox, 20, sy, W - 40 - btnW - 12);
+            var copy = new Pill { Text = copyText, Size = new Size(btnW, 36), Location = new Point(W - 20 - btnW, sy) };
+            copy.Click += (s, e) => { Clipboard.SetText(custom.Code()); Log(L("Profile code copied: ", "Codigo do perfil copiado: ", "Code du profil copié : ") + custom.Code()); };
+            share.Controls.Add(copy);
+            sy += 36 + 20;
+            share.Controls.Add(Kit.Text(L("Paste a profile code here:", "Cola aqui um codigo de perfil:", "Colle un code de profil ici :"), Theme.UiBold(9f), Theme.Dim, Theme.Card, 20, sy, W - 40));
+            sy += 24;
+            pasteBox = new TextBox { ForeColor = Theme.Text, Font = Theme.Mono(9.5f) };
+            Kit.Field(share, pasteBox, 20, sy, W - 40 - btnW - 12);
+            var apply = new Pill { Main = true, Text = applyText, Size = new Size(btnW, 36), Location = new Point(W - 20 - btnW, sy) };
             apply.Click += (s, e) => ApplyPasted();
-            page.Controls.Add(apply);
-            y += 50;
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 40), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
-                Text = L("A code only holds the values on this page; the launcher shows what changes before it applies one.", "Um codigo so tem os valores desta pagina; o launcher mostra o que muda antes de o aplicar.") });
+            share.Controls.Add(apply);
+            sy += 36 + 14;
+            var shareNote = Kit.Text(L("A code only holds the values on this page; the launcher shows what changes before it applies one.", "Um codigo so tem os valores desta pagina; o launcher mostra o que muda antes de o aplicar.", "Un code ne contient que les valeurs de cette page ; le launcher montre ce qui change avant d'en appliquer un."),
+                Theme.Ui(9f), Theme.Dim, Theme.Card, 20, sy, W - 40);
+            share.Controls.Add(shareNote);
+            share.Height = sy + shareNote.Height + 16;
+            page.Controls.Add(share);
+            page.Controls.Add(new Label { Location = new Point(X, y + share.Height + 10), Size = new Size(10, 14), BackColor = Theme.Back });
             return page;
         }
 

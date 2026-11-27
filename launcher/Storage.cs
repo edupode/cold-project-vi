@@ -4,6 +4,7 @@
 // build from source (CARGO_TARGET_DIR). launcher.ini keeps it as storage=<folder>; the files already made are
 // moved with robocopy (Windows' own copier), the game closed.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -104,17 +105,30 @@ namespace VIctoryLauncher
             Busy(true);
             new Thread(() => {
                 bool ok = true;
+                var movedAll = new List<string>();
+                try
+                {
                 foreach (var t in from)
                 {
                     if (!Directory.Exists(t.Item1)) continue;
                     Progress(string.Format(L("Moving {0}...", "A mover {0}...", "Déplacement de {0}..."), Path.GetFileName(t.Item2)), 0.1f + 0.8f * from.IndexOf(t) / Math.Max(1, from.Count));
                     // /MOVE: each file leaves the old place once it is copied; a code of 8 or more is a failure.
                     int code = RunWait("robocopy", "\"" + t.Item1.TrimEnd('\\') + "\" \"" + t.Item2 + "\" /E /MOVE /R:1 /W:1 /NP /NFL /NDL /MT:8", false);
-                    if (code >= 8) { ok = false; Log(string.Format(L("Moving {0} stopped (robocopy code {1}); what was not moved is still in {2}.", "A mudanca de {0} parou (codigo {1} do robocopy); o que nao foi movido continua em {2}.", "Le déplacement de {0} s'est arrêté (code robocopy {1}) ; ce qui n'a pas été déplacé est encore dans {2}."), t.Item1, code, t.Item1)); break; }
+                    if (code >= 8) { ok = false; SafeLog(string.Format(L("Moving {0} stopped (robocopy code {1}); what was not moved is still in {2}.", "A mudanca de {0} parou (codigo {1} do robocopy); o que nao foi movido continua em {2}.", "Le déplacement de {0} s'est arrêté (code robocopy {1}) ; ce qui n'a pas été déplacé est encore dans {2}."), t.Item1, code, t.Item1)); break; }
+                    movedAll.Add(t.Item1);
                 }
+                }
+                catch (Exception ex) { ok = false; SafeLog(ex.Message); }
                 try
                 {
                     BeginInvoke(new Action(() => {
+                        // A folder already moved whole when a later one failed: the settings follow it, so the launcher
+                        // does not look for it (empty) in the old place.
+                        if (!ok)
+                        {
+                            if (movedAll.Contains(cacheDir)) { WriteSetting("cache", Path.Combine(target, "cache")); cacheDir = Path.Combine(target, "cache"); }
+                            if (movedAll.Contains(dataDir)) { WriteSetting("data", Path.Combine(target, "data")); dataDir = Path.Combine(target, "data"); }
+                        }
                         if (ok)
                         {
                             WriteSetting("storage", target);
@@ -129,7 +143,11 @@ namespace VIctoryLauncher
                         ShowStorage(); Refresh2(); RefreshShaders();
                     }));
                 }
-                catch (Exception) { }
+                catch (Exception)
+                {
+                    // The window is gone: the move is still finished on disk, so the settings are written anyway.
+                    if (ok) { WriteSetting("storage", target); WriteSetting("cache", Path.Combine(target, "cache")); WriteSetting("data", Path.Combine(target, "data")); }
+                }
             }) { IsBackground = true }.Start();
         }
 

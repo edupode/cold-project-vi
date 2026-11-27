@@ -62,7 +62,10 @@ namespace VIctoryLauncher
             try
             {
                 foreach (var p in Process.GetProcesses())
+                {
                     try { if (p.ProcessName.IndexOf("Launcher", StringComparison.OrdinalIgnoreCase) >= 0) running.Add(p.MainModule.FileName); } catch (Exception) { }
+                    finally { p.Dispose(); }
+                }
             }
             catch (Exception) { }
             foreach (var place in places.Distinct())

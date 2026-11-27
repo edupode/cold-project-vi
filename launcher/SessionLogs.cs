@@ -115,10 +115,12 @@ namespace VIctoryLauncher
             string summary;
             try { summary = SessionSummary(code, started, ended); }
             catch (Exception) { return; }
-            var viId = (hw ?? ReadHardware()).Id;
+            var hwNow = hw;
             new Thread(() => {
                 try
                 {
+                    // (Read here, not before the thread: this can be the thread that waits for the game, and it must not throw.)
+                    var viId = (hwNow ?? ReadHardware()).Id;
                     byte[] data;
                     using (var mem = new MemoryStream())
                     {
@@ -141,7 +143,7 @@ namespace VIctoryLauncher
                     req.ContentLength = data.Length;
                     using (var s = req.GetRequestStream()) s.Write(data, 0, data.Length);
                     using (var r = (HttpWebResponse)req.GetResponse()) { }
-                    Log(L("Game log sent to edupode.", "Log do jogo enviada ao edupode.", "Log du jeu envoyé à edupode."));
+                    SafeLog(L("Game log sent to edupode.", "Log do jogo enviada ao edupode.", "Log du jeu envoyé à edupode."));
                 }
                 catch (Exception) { }
             }) { IsBackground = true }.Start();

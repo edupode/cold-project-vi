@@ -1,4 +1,4 @@
-// Julia's Launcher: the Shaders page. What the shader cache holds, read again every second while the
+﻿// Julia's Launcher: the Shaders page. What the shader cache holds, read again every second while the
 // page is open (translated shaders, pipelines made, the ones that failed, disk room, the last errors),
 // and the ways to fix it: prepare, repair, rebuild.
 using System;
@@ -14,9 +14,11 @@ namespace VIctoryLauncher
 {
     partial class LauncherForm
     {
-        Label[] shaderMarks, shaderTexts;
+        StatusMark[] shaderMarks;
+        Label[] shaderTexts;
         TextBox shaderErrors;
         LoadBar shaderBar, pipeBar;
+        ToolTip shaderTips = new ToolTip { AutoPopDelay = 20000 };
         // A stage being worked on (0 shaders, 1 pipelines) shows its live progress; else the cache's state.
         readonly bool[] stageLive = new bool[2];
         System.Windows.Forms.Timer shaderTimer;
@@ -25,60 +27,74 @@ namespace VIctoryLauncher
         Panel ShadersPage()
         {
             var page = Page();
-            const int X = 28, W = 900;
-            int y = 18;
-            page.Controls.Add(new Heading(L("Emulator", "Emulador")) { Location = new Point(X, y), Width = W });
-            y += 32;
-            buildStatus = new Label { Location = new Point(X, y + 8), Size = new Size(W - 330, 20), ForeColor = Theme.Dim, BackColor = Theme.Back, AutoEllipsis = true, Font = Theme.Mono(8.75f) };
-            page.Controls.Add(buildStatus);
-            buildButton = new Pill { Text = L("Build VIctory", "Compilar VIctory"), Location = new Point(X + W - 310, y), Width = 150 };
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Shaders", "Shaders", "Shaders"), L("Shaders", "Shaders", "Shaders"), L("kept warm.", "sempre prontos.", "au chaud."), L("The emulator, its shader cache and how healthy both are, live.", "O emulador, a cache de shaders e a saude de ambos, ao vivo.", "L'émulateur, son cache de shaders et leur état, en direct."));
+            // The engine card: whether VIctory is built (green or amber), and the two buttons that build and prepare it.
+            var engine = new RoundCard { Location = new Point(X, y), Width = W, Height = 76, Flat = true, BackColor = Theme.Back };
+            var buildText = L("Build VIctory", "Compilar VIctory", "Compiler VIctory");
+            var prepText = L("Prepare shaders", "Preparar shaders", "Préparer les shaders");
+            buildButton = new Pill { Text = buildText, Size = new Size(Kit.PillW(buildText, 9.5f, 140), 38) };
+            prepareButton = new Pill { Main = true, Text = prepText, Size = new Size(Kit.PillW(prepText, 9.5f, 160), 38) };
+            prepareButton.Location = new Point(W - 16 - prepareButton.Width, (engine.Height - 38) / 2);
+            buildButton.Location = new Point(prepareButton.Left - 10 - buildButton.Width, prepareButton.Top);
             buildButton.Click += (s, e) => Build();
-            page.Controls.Add(buildButton);
-            prepareButton = new Pill { Main = true, Text = L("Prepare shaders", "Preparar shaders"), Location = new Point(X + W - 150, y), Width = 150 };
             prepareButton.Click += (s, e) => Prepare();
-            page.Controls.Add(prepareButton);
-            y += 50;
+            buildStatus = new Label { Location = new Point(18, 10), Size = new Size(buildButton.Left - 18 - 16, 56), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f), UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft };
+            buildStatus.TextChanged += (s, e) => shaderTips.SetToolTip(buildStatus, buildStatus.Text);
+            engine.Controls.Add(buildStatus); engine.Controls.Add(buildButton); engine.Controls.Add(prepareButton);
+            page.Controls.Add(engine);
+            y += engine.Height + 18;
 
-            page.Controls.Add(new Heading(L("Shader and pipeline health (live)", "Saude dos shaders e pipelines (ao vivo)")) { Location = new Point(X, y), Width = W });
-            y += 32;
+            page.Controls.Add(new Heading(L("Shader and pipeline health (live)", "Saude dos shaders e pipelines (ao vivo)", "État des shaders et pipelines (en direct)")) { Location = new Point(X, y), Width = W });
+            y += 34;
             const int rows = 8;
-            shaderMarks = new Label[rows]; shaderTexts = new Label[rows];
-            var card = new Panel { Location = new Point(X, y), Size = new Size(W, rows * 32 + 12), BackColor = Theme.Card };
-            card.Paint += (s, e) => { using (var p = new Pen(Theme.Line)) e.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1); };
+            shaderMarks = new StatusMark[rows]; shaderTexts = new Label[rows];
+            var card = new RoundCard { Location = new Point(X, y), Size = new Size(W, rows * 34 + 20), Flat = true, BackColor = Theme.Back };
+            var rowFont = Theme.Ui(9.5f);
             for (int i = 0; i < rows; i++)
             {
-                shaderMarks[i] = new Label { Location = new Point(14, 8 + i * 32), Size = new Size(26, 26), Font = Theme.UiBold(12f), ForeColor = Theme.Dim, BackColor = Theme.Card, Text = "•" };
-                shaderTexts[i] = new Label { Location = new Point(44, 12 + i * 32), Size = new Size(W - 60, 22), Font = Theme.Mono(9f), ForeColor = Theme.Text, BackColor = Theme.Card, AutoEllipsis = true };
+                shaderMarks[i] = new StatusMark { Location = new Point(18, 12 + i * 34 + 2), Size = new Size(22, 22), Kind = 4 };
+                shaderTexts[i] = new Label { Location = new Point(52, 10 + i * 34), Size = new Size(W - 52 - 18, 26), Font = rowFont, ForeColor = Theme.Text, BackColor = Theme.Back, AutoEllipsis = true, UseMnemonic = false, TextAlign = ContentAlignment.MiddleLeft };
                 card.Controls.Add(shaderMarks[i]); card.Controls.Add(shaderTexts[i]);
             }
+            // Before the first reading (a second at most): not a blank card.
+            shaderTexts[0].Text = L("Reading the cache...", "A ler a cache...", "Lecture du cache...");
             page.Controls.Add(card);
-            y += card.Height + 10;
-            shaderBar = new LoadBar { Location = new Point(X, y), Size = new Size(W, 28) };
-            page.Controls.Add(shaderBar);
-            y += 36;
-            pipeBar = new LoadBar { Location = new Point(X, y), Size = new Size(W, 28) };
-            page.Controls.Add(pipeBar);
-            y += 40;
-            var repair = new Pill { Text = L("Repair", "Reparar"), Location = new Point(X, y), Size = new Size(150, 36) };
+            y += card.Height + 12;
+
+            // The two bars on one card.
+            var bars = new RoundCard { Location = new Point(X, y), Size = new Size(W, 112), Flat = true, BackColor = Theme.Back };
+            shaderBar = new LoadBar { Location = new Point(18, 14), Size = new Size(W - 36, 36), BackColor = Theme.Back };
+            pipeBar = new LoadBar { Location = new Point(18, 62), Size = new Size(W - 36, 36), BackColor = Theme.Back };
+            bars.Controls.Add(shaderBar); bars.Controls.Add(pipeBar);
+            page.Controls.Add(bars);
+            y += bars.Height + 14;
+
+            var repair = new Pill { Text = L("Repair", "Reparar", "Réparer"), Size = new Size(130, 38) };
             repair.Click += (s, e) => RepairShaders(false);
-            page.Controls.Add(repair);
-            var rebuild = new Pill { Text = L("Rebuild everything", "Refazer tudo"), Location = new Point(X + 160, y), Size = new Size(180, 36) };
+            var rebuild = new Pill { Text = L("Rebuild everything", "Refazer tudo", "Tout refaire"), Size = new Size(180, 38) };
             rebuild.Click += (s, e) => RepairShaders(true);
-            page.Controls.Add(rebuild);
-            var open = new Pill { Text = L("Open the cache folder", "Abrir a pasta da cache"), Location = new Point(X + 350, y), Size = new Size(200, 36) };
+            var open = new Pill { Text = L("Open the cache folder", "Abrir a pasta da cache", "Ouvrir le dossier du cache"), Size = new Size(200, 38) };
             open.Click += (s, e) => { Directory.CreateDirectory(ActiveCacheDir); OpenUrl(ActiveCacheDir); };
-            page.Controls.Add(open);
-            y += 50;
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 36), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
-                Text = L("Repair: makes the missing shaders and retries the pipelines that failed. Rebuild everything: clears the cache and prepares it again (about 5 minutes).",
-                         "Reparar: faz os shaders que faltam e tenta de novo as pipelines que falharam. Refazer tudo: limpa a cache e prepara-a de novo (cerca de 5 minutos).") });
-            y += 42;
+            y = Kit.Row(page, X, y, W, repair, rebuild, open) + 14;
+            var note = Kit.Text(L("Repair: makes the missing shaders and retries the pipelines that failed. Rebuild everything: clears the cache and prepares it again (about 5 minutes).",
+                         "Reparar: faz os shaders que faltam e tenta de novo as pipelines que falharam. Refazer tudo: limpa a cache e prepara-a de novo (cerca de 5 minutos).",
+                         "Réparer : fait les shaders manquants et réessaie les pipelines qui ont échoué. Tout refaire : vide le cache et le prépare à nouveau (environ 5 minutes)."),
+                         Theme.Ui(9f), Theme.Dim, Theme.Back, X, y, W);
+            page.Controls.Add(note);
+            y += note.Height + 20;
             y = StorageSection(page, X, y, W);
-            page.Controls.Add(new Heading(L("Last errors (prepare.log)", "Ultimos erros (prepare.log)")) { Location = new Point(X, y), Width = W });
-            y += 30;
-            shaderErrors = new TextBox { Location = new Point(X, y), Size = new Size(W, 150), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Theme.Card, ForeColor = Theme.Dim, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical };
-            page.Controls.Add(shaderErrors);
-            page.Controls.Add(new Label { Location = new Point(X, y + 160), Size = new Size(10, 10), BackColor = Theme.Back });
+            y += 6;
+            page.Controls.Add(new Heading(L("Last errors (prepare.log)", "Ultimos erros (prepare.log)", "Dernières erreurs (prepare.log)")) { Location = new Point(X, y), Width = W });
+            y += 34;
+            shaderErrors = new TextBox { Multiline = true, ReadOnly = true, ForeColor = Theme.Dim, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None, BackColor = Theme.Back, TabStop = false };
+            var errCard = new RoundCard { Location = new Point(X, y), Size = new Size(W, 170), Flat = true, BackColor = Theme.Back };
+            shaderErrors.Location = new Point(16, 14);
+            shaderErrors.Size = new Size(W - 32, errCard.Height - 28);
+            Kit.Dark(shaderErrors, "DarkMode_Explorer");
+            errCard.Controls.Add(shaderErrors);
+            page.Controls.Add(errCard);
+            page.Controls.Add(new Label { Location = new Point(X, y + errCard.Height + 10), Size = new Size(10, 14), BackColor = Theme.Back });
 
             shaderTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             shaderTimer.Tick += (s, e) => { if (page.Visible) RefreshShaders(); };
@@ -96,7 +112,7 @@ namespace VIctoryLauncher
             if (InvokeRequired) { try { BeginInvoke(new Action<int, float, string, bool>(Stage), stage, part, text, live); } catch (Exception) { } return; }
             stageLive[stage] = live;
             var bar = stage == 0 ? shaderBar : pipeBar;
-            if (bar != null) bar.Set(part, text);
+            if (bar != null) bar.Set(part, Kit.Clip(text, bar.Font, Math.Max(80, bar.Width - 70)));
         }
 
         static int Lines(string file)
@@ -156,19 +172,19 @@ namespace VIctoryLauncher
                         for (int i = 0; i < shaderTexts.Length && i < rows.Count; i++)
                         {
                             var st = rows[i].Item1;
-                            shaderMarks[i].Text = st == 1 ? "✓" : st == 0 ? "✗" : "•";
-                            shaderMarks[i].ForeColor = st == 1 ? Theme.Good : st == 0 ? Theme.Warn : Theme.Dim;
-                            shaderTexts[i].Text = rows[i].Item2;
+                            shaderMarks[i].Set(st == 1 ? 1 : st == 0 ? 0 : 3, "");
+                            if (shaderTexts[i].Text != rows[i].Item2) { shaderTexts[i].Text = rows[i].Item2; shaderTips.SetToolTip(shaderTexts[i], rows[i].Item2); }
                         }
                         var t = errors.Length == 0 ? L("(no errors)", "(sem erros)") : Scrub(errors);
                         if (shaderErrors.Text != t) shaderErrors.Text = t;
+                        shaderErrors.ForeColor = errors.Length == 0 ? Theme.Dim : Theme.Soft;
                         if (!stageLive[0])
-                            shaderBar.Set(shaders >= 1000 || prepared ? 1f : 0f, shaders >= 1000 || prepared
-                                ? string.Format(L("Shaders: {0:N0} translated, ready", "Shaders: {0:N0} traduzidos, prontos"), shaders)
-                                : L("Shaders: not prepared yet (press Prepare shaders)", "Shaders: ainda nao preparados (carrega em Preparar shaders)"));
+                            shaderBar.Set(shaders >= 1000 || prepared ? 1f : 0f, Kit.Clip(shaders >= 1000 || prepared
+                                ? string.Format(L("Shaders: {0:N0} translated, ready", "Shaders: {0:N0} traduzidos, prontos", "Shaders : {0:N0} traduits, prêts"), shaders)
+                                : L("Shaders: not prepared yet (press Prepare shaders)", "Shaders: ainda nao preparados (carrega em Preparar shaders)", "Shaders : pas encore préparés (appuie sur Préparer les shaders)"), shaderBar.Font, Math.Max(80, shaderBar.Width - 70)));
                         if (!stageLive[1])
                             pipeBar.Set(used > 0 ? Math.Min(1f, (float)done / used) : done > 0 ? 1f : 0f,
-                                string.Format(L("Pipelines: {0:N0} made for the driver (your sessions used {1:N0})", "Pipelines: {0:N0} feitas para o driver (as tuas sessoes usaram {1:N0})"), done, used));
+                                Kit.Clip(string.Format(L("Pipelines: {0:N0} made for the driver (your sessions used {1:N0})", "Pipelines: {0:N0} feitas para o driver (as tuas sessoes usaram {1:N0})", "Pipelines : {0:N0} faites pour le pilote (tes sessions en ont utilisé {1:N0})"), done, used), pipeBar.Font, Math.Max(80, pipeBar.Width - 70)));
                         shaderReading = false;
                     }));
                 }

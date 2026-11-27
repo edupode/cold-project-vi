@@ -1,4 +1,4 @@
-// Game saves to share: the title's save folder (data\7952987A\saves, a few hundred KB) exported to a zip on the
+﻿// Game saves to share: the title's save folder (data\7952987A\saves, a few hundred KB) exported to a zip on the
 // Desktop, or a friend's zip imported over it. The emulated console user is the same on every PC, so a save
 // made on one plays on another. Before an import the current saves are kept in a zip of their own
 // (%LOCALAPPDATA%\VIctory\save-backups), and nothing is touched while the game runs.
@@ -24,29 +24,54 @@ namespace VIctoryLauncher
         int SavesSection(Control page, int X, int y, int W)
         {
             page.Controls.Add(new Heading(L("Game saves", "Saves do jogo", "Sauvegardes du jeu")) { Location = new Point(X, y), Width = W });
-            y += 32;
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 36), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
-                Text = L("Share your progress or play a friend's: export makes a zip on your Desktop; import puts a friend's zip in place (your own saves are kept in a backup first).",
+            y += 34;
+            var card = new RoundCard { Location = new Point(X, y), Width = W };
+            int cy = 16;
+            var intro = Kit.Text(L("Share your progress or play a friend's: export makes a zip on your Desktop; import puts a friend's zip in place (your own saves are kept in a backup first).",
                          "Partilha o teu progresso ou joga o de um amigo: exportar cria um zip no Ambiente de trabalho; importar poe o zip de um amigo no lugar (os teus saves ficam primeiro numa copia de seguranca).",
-                         "Partage ta progression ou joue celle d'un ami : exporter crée un zip sur ton Bureau ; importer met le zip d'un ami à la place (tes sauvegardes sont d'abord gardées dans une copie de sécurité).") });
-            y += 40;
-            var export = new Pill { Text = L("Export my save", "Exportar o meu save", "Exporter ma sauvegarde"), Location = new Point(X, y), Width = 200 };
+                         "Partage ta progression ou joue celle d'un ami : exporter crée un zip sur ton Bureau ; importer met le zip d'un ami à la place (tes sauvegardes sont d'abord gardées dans une copie de sécurité)."),
+                         Theme.Ui(9.25f), Theme.Soft, Theme.Card, 20, cy, W - 40);
+            card.Controls.Add(intro);
+            cy += intro.Height + 10;
+            // What is there now (read again each time the page is shown).
+            var mark = new StatusMark { Location = new Point(20, cy + 2), Size = new Size(20, 20), Kind = 3 };
+            var status = new Label { Location = new Point(50, cy), Size = new Size(W - 70, 24), Font = Theme.UiBold(9.25f), BackColor = Theme.Card, ForeColor = Theme.Dim, UseMnemonic = false, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft };
+            card.Controls.Add(mark); card.Controls.Add(status);
+            Action showSaves = () => {
+                DateTime last = DateTime.MinValue;
+                try { if (HasFiles(SavesDir)) last = Directory.EnumerateFiles(SavesDir, "*", SearchOption.AllDirectories).Select(f => File.GetLastWriteTime(f)).Max(); } catch (Exception) { }
+                if (last == DateTime.MinValue)
+                {
+                    mark.Set(3, "");
+                    status.ForeColor = Theme.Dim;
+                    status.Text = L("No save yet: play until the game saves once.", "Ainda nao ha save: joga ate o jogo gravar uma vez.", "Pas encore de sauvegarde : joue jusqu'à ce que le jeu sauvegarde une fois.");
+                }
+                else
+                {
+                    mark.Set(1, "");
+                    status.ForeColor = Theme.Text;
+                    status.Text = string.Format(L("Your save: last written {0}", "O teu save: ultima gravacao {0}", "Ta sauvegarde : dernière écriture {0}"), last.ToString("g"));
+                }
+            };
+            showSaves();
+            card.VisibleChanged += (s, e) => { if (card.Visible) showSaves(); };
+            cy += 24 + 14;
+            var export = new Pill { Text = L("Export my save", "Exportar o meu save", "Exporter ma sauvegarde"), Size = new Size(200, 38) };
             export.Click += (s, e) => ExportSave();
-            var import = new Pill { Text = L("Import a save...", "Importar um save...", "Importer une sauvegarde..."), Location = new Point(X + 210, y), Width = 200 };
+            var import = new Pill { Text = L("Import a save...", "Importar um save...", "Importer une sauvegarde..."), Size = new Size(200, 38) };
             import.Click += (s, e) => ImportSave();
-            var open = new Pill { Text = L("Open the saves folder", "Abrir a pasta dos saves", "Ouvrir le dossier"), Location = new Point(X + 420, y), Width = 200 };
+            var open = new Pill { Text = L("Open the saves folder", "Abrir a pasta dos saves", "Ouvrir le dossier"), Size = new Size(200, 38) };
             open.Click += (s, e) => { Directory.CreateDirectory(SavesDir); try { Process.Start("explorer.exe", "\"" + SavesDir + "\""); } catch (Exception) { } };
-            page.Controls.Add(export); page.Controls.Add(import); page.Controls.Add(open);
-            y += 48;
-            var share = new Pill { Text = L("Share in the gallery", "Partilhar na galeria", "Partager dans la galerie"), Location = new Point(X, y), Width = 200 };
+            var share = new Pill { Text = L("Share in the gallery", "Partilhar na galeria", "Partager dans la galerie"), Size = new Size(200, 38) };
             share.Click += (s, e) => ShareSave();
-            var gallery = new Pill { Text = L("Open the save gallery", "Abrir a galeria de saves", "Ouvrir la galerie"), Location = new Point(X + 210, y), Width = 200 };
+            var gallery = new Pill { Text = L("Open the save gallery", "Abrir a galeria de saves", "Ouvrir la galerie"), Size = new Size(200, 38) };
             gallery.Click += (s, e) => OpenUrl(GalleryUrl);
-            page.Controls.Add(share); page.Controls.Add(gallery);
-            var restore = new Pill { Text = L("Restore a backup...", "Restaurar uma copia...", "Restaurer une copie..."), Location = new Point(X + 420, y), Width = 200 };
+            var restore = new Pill { Text = L("Restore a backup...", "Restaurar uma copia...", "Restaurer une copie..."), Size = new Size(200, 38) };
             restore.Click += (s, e) => RestoreBackup();
-            page.Controls.Add(restore);
-            return y + 48;
+            cy = Kit.Row(card, 20, cy, W - 40, export, import, open, share, gallery, restore);
+            card.Height = cy + 18;
+            page.Controls.Add(card);
+            return y + card.Height + 16;
         }
 
         // The public save gallery (server/hardware-worker): a shared save waits until edupode approves it.
@@ -58,22 +83,38 @@ namespace VIctoryLauncher
         {
             if (!HasFiles(SavesDir)) { MessageBox.Show(this, L("There is no save yet: play until the game saves once.", "Ainda nao ha save: joga ate o jogo gravar uma vez.", "Pas encore de sauvegarde : joue jusqu'à ce que le jeu sauvegarde une fois."), "Julia's Launcher"); return; }
             string title, note;
-            using (var f = new Form { Text = L("Share in the gallery", "Partilhar na galeria", "Partager dans la galerie"), ClientSize = new Size(560, 300), BackColor = Theme.Back, ForeColor = Theme.Text,
-                Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon })
+            using (var f = Dialog(L("Share in the gallery", "Partilhar na galeria", "Partager dans la galerie"), 580, 400))
             {
-                f.Controls.Add(new Label { Location = new Point(20, 16), Size = new Size(520, 40), ForeColor = Theme.Dim, BackColor = Theme.Back,
-                    Text = L("Your save goes to the public gallery once edupode has approved it. Everyone can download it.",
+                const int pad = 24, fw = 532;
+                int y = 20;
+                var intro = Kit.Text(L("Your save goes to the public gallery once edupode has approved it. Everyone can download it.",
                              "O teu save vai para a galeria publica depois de o edupode o aprovar. Qualquer pessoa o pode descarregar.",
-                             "Ta sauvegarde arrive dans la galerie publique une fois qu'edupode l'a validée. Tout le monde pourra la télécharger.") });
-                f.Controls.Add(new Label { Location = new Point(20, 62), AutoSize = true, BackColor = Theme.Back, Text = L("Title (where you are in the story)", "Titulo (onde estas na historia)", "Titre (où tu en es dans l'histoire)") });
-                var t = new TextBox { Location = new Point(20, 84), Width = 520, MaxLength = 80 };
-                f.Controls.Add(new Label { Location = new Point(20, 118), AutoSize = true, BackColor = Theme.Back, Text = L("Note (optional)", "Nota (opcional)", "Note (facultatif)") });
-                var n = new TextBox { Location = new Point(20, 140), Size = new Size(520, 70), MaxLength = 300, Multiline = true };
-                var ok = new Pill { Main = true, Text = L("Share", "Partilhar", "Partager"), Location = new Point(20, 236), Size = new Size(200, 40) };
-                var cancel = new Pill { Text = L("Cancel", "Cancelar"), Location = new Point(230, 240), Size = new Size(160, 34) };
-                ok.Click += (s, e) => { if (t.Text.Trim().Length >= 3) { f.DialogResult = DialogResult.OK; f.Close(); } };
+                             "Ta sauvegarde arrive dans la galerie publique une fois qu'edupode l'a validée. Tout le monde pourra la télécharger."),
+                             Theme.Ui(9.5f), Theme.Soft, Theme.Back, pad, y, fw);
+                f.Controls.Add(intro);
+                y += intro.Height + 14;
+                var l1 = Kit.Text(L("Title (where you are in the story)", "Titulo (onde estas na historia)", "Titre (où tu en es dans l'histoire)"), Theme.UiBold(9.5f), Theme.Text, Theme.Back, pad, y, fw);
+                f.Controls.Add(l1);
+                y += l1.Height + 4;
+                var t = new TextBox { MaxLength = 80, ForeColor = Theme.Text, Font = Theme.Ui(10f) };
+                Kit.Field(f, t, pad, y, fw);
+                y += 36 + 16;
+                var l2 = Kit.Text(L("Note (optional)", "Nota (opcional)", "Note (facultatif)"), Theme.UiBold(9.5f), Theme.Text, Theme.Back, pad, y, fw);
+                f.Controls.Add(l2);
+                y += l2.Height + 4;
+                var n = new TextBox { MaxLength = 300, Multiline = true, ForeColor = Theme.Text, Font = Theme.Ui(10f) };
+                Kit.Field(f, n, pad, y, fw, 92);
+                y += 92 + 12;
+                // Why Share does nothing yet: the title needs three letters.
+                var hint = Kit.Text(L("The title needs at least 3 letters.", "O titulo precisa de pelo menos 3 letras.", "Le titre doit avoir au moins 3 lettres."), Theme.Ui(9f), Theme.Dim, Theme.Back, pad, y, fw);
+                f.Controls.Add(hint);
+                y += hint.Height + 12;
+                var ok = new Pill { Main = true, Text = L("Share", "Partilhar", "Partager"), Size = new Size(180, 40) };
+                var cancel = new Pill { Text = L("Cancel", "Cancelar", "Annuler"), Size = new Size(150, 40) };
+                ok.Click += (s, e) => { if (t.Text.Trim().Length >= 3) { f.DialogResult = DialogResult.OK; f.Close(); } else { hint.ForeColor = Theme.Warn; t.Focus(); } };
                 cancel.Click += (s, e) => f.Close();
-                f.Controls.Add(t); f.Controls.Add(n); f.Controls.Add(ok); f.Controls.Add(cancel);
+                y = Kit.Row(f, pad, y, fw, ok, cancel);
+                f.ClientSize = new Size(580, y + 22);
                 if (f.ShowDialog(this) != DialogResult.OK) return;
                 title = t.Text.Trim(); note = n.Text.Trim();
             }
@@ -302,22 +343,28 @@ namespace VIctoryLauncher
             if (State() != GameState.None) { MessageBox.Show(this, L("Close the game first.", "Fecha o jogo primeiro.", "Ferme d'abord le jeu."), "Julia's Launcher"); return; }
             var backups = Directory.Exists(SaveBackups) ? new DirectoryInfo(SaveBackups).EnumerateFiles("*.zip").OrderByDescending(f => f.LastWriteTime).ToList() : new List<FileInfo>();
             if (backups.Count == 0) { MessageBox.Show(this, L("There is no backup yet: one is made before every game.", "Ainda nao ha copias: e feita uma antes de cada jogo.", "Pas encore de copie : une est faite avant chaque partie."), "Julia's Launcher"); return; }
-            using (var f = new Form { Text = L("Restore a backup", "Restaurar uma copia", "Restaurer une copie"), ClientSize = new Size(520, 400), BackColor = Theme.Back, ForeColor = Theme.Text,
-                Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon })
+            using (var f = Dialog(L("Restore a backup", "Restaurar uma copia", "Restaurer une copie"), 580, 520))
             {
-                f.Controls.Add(new Label { Location = new Point(20, 14), Size = new Size(480, 40), ForeColor = Theme.Dim, BackColor = Theme.Back,
-                    Text = L("Your saves as they were before each game (newest first). The current ones are kept in a backup too.",
+                const int pad = 24, fw = 532;
+                var intro = Kit.Text(L("Your saves as they were before each game (newest first). The current ones are kept in a backup too.",
                              "Os teus saves como estavam antes de cada jogo (os mais recentes primeiro). Os atuais tambem ficam numa copia.",
-                             "Tes sauvegardes telles qu'avant chaque partie (les plus récentes d'abord). Les actuelles sont aussi gardées.") });
-                var list = new ListBox { Location = new Point(20, 60), Size = new Size(480, 270), BackColor = Theme.Card, ForeColor = Theme.Text, BorderStyle = BorderStyle.FixedSingle };
+                             "Tes sauvegardes telles qu'avant chaque partie (les plus récentes d'abord). Les actuelles sont aussi gardées."),
+                             Theme.Ui(9.5f), Theme.Soft, Theme.Back, pad, 20, fw);
+                f.Controls.Add(intro);
+                int ly = 20 + intro.Height + 12;
+                var listCard = new RoundCard { Location = new Point(pad, ly), Size = new Size(fw, 330) };
+                var list = new ThemedList { Location = new Point(8, 8), Size = new Size(fw - 16, 314) };
+                listCard.Controls.Add(list);
+                f.Controls.Add(listCard);
                 foreach (var b in backups)
                     list.Items.Add(b.LastWriteTime.ToString("g") + "   " + (b.Name.StartsWith("auto-") ? L("before a game", "antes de um jogo", "avant une partie") : L("before an import", "antes de importar", "avant un import")) + "   " + Math.Max(1, b.Length / 1024) + " KB");
                 list.SelectedIndex = 0;
-                var ok = new Pill { Main = true, Text = L("Restore", "Restaurar", "Restaurer"), Location = new Point(20, 344), Size = new Size(180, 40) };
-                var cancel = new Pill { Text = L("Cancel", "Cancelar", "Annuler"), Location = new Point(210, 348), Size = new Size(140, 34) };
+                var ok = new Pill { Main = true, Text = L("Restore", "Restaurar", "Restaurer"), Size = new Size(180, 40) };
+                var cancel = new Pill { Text = L("Cancel", "Cancelar", "Annuler"), Size = new Size(150, 40) };
                 ok.Click += (s, e) => { f.DialogResult = DialogResult.OK; f.Close(); };
                 cancel.Click += (s, e) => f.Close();
-                f.Controls.Add(list); f.Controls.Add(ok); f.Controls.Add(cancel);
+                int by = Kit.Row(f, pad, listCard.Bottom + 16, fw, ok, cancel);
+                f.ClientSize = new Size(580, by + 22);
                 if (f.ShowDialog(this) != DialogResult.OK || list.SelectedIndex < 0) return;
                 var chosen = backups[list.SelectedIndex].FullName;
                 try

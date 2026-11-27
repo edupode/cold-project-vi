@@ -166,6 +166,10 @@ namespace VIctoryLauncher
             set("VICTORY_CACHE_DIR", Path.Combine(dataRoot, "cache-amd"));
             set("VICTORY_DATA_DIR", dataDir);
             set("VICTORY_LOG", "warn");
+            // The pipelines each game uses are written down, so "Load pipelines before the game" (warm --used)
+            // has something to make: without it the AMD engine's warm-up made 0 and every pipeline was
+            // compiled during play (hundreds of draws dropped a frame for the first minutes).
+            set("VICTORY_PIPELINE_BOOK", "1");
             set("VICTORY_PORT_CONSTANTS", "1");
             set("VICTORY_PORT_DESCRIPTORS", "1");
             set("VICTORY_PORT_CBV", "1");
@@ -274,7 +278,8 @@ namespace VIctoryLauncher
 
         HardwareInfo hw;
         Label idLabel;
-        TextBox hwText, hwJson;
+        InfoCard hwText;
+        TextBox hwJson;
         CheckBox shareBox;
         Label shareStatus;
         ComboBox engineBox;
@@ -455,6 +460,15 @@ namespace VIctoryLauncher
             }) { IsBackground = true }.Start();
         }
 
+        // A label gets the height its text needs at its width (never less than a few lines) and its
+        // bottom edge comes back, so the buttons under it never overlap long Portuguese or French text.
+        static int FitText(Label l, int top)
+        {
+            int need = TextRenderer.MeasureText(l.Text ?? "", l.Font, new Size(l.Width, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + 8;
+            l.Height = Math.Max(60, need);
+            return top + l.Height;
+        }
+
         // The question before each game while sharing is off: why it helps, what the list is, what
         // goes and what never does. "Don't ask again" ends it; Hardware & ID changes it any time.
         void AskToShare()
@@ -464,7 +478,7 @@ namespace VIctoryLauncher
             var f = new Form { Text = L("Help the game run on more PCs", "Ajuda o jogo a correr em mais PCs"), ClientSize = new Size(660, 520), BackColor = Theme.Back, ForeColor = Theme.Text,
                 Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon };
             f.Controls.Add(new Heading(L("Share your hardware?", "Partilhar o teu hardware?")) { Location = new Point(20, 16), Width = 620 });
-            var text = new Label { Location = new Point(20, 50), Size = new Size(620, 390), ForeColor = Theme.Text, BackColor = Theme.Back };
+            var text = new Label { Location = new Point(20, 50), Size = new Size(620, 390), Font = f.Font, ForeColor = Theme.Text, BackColor = Theme.Back };
             text.Text = string.Join("\r\n", Pt ? new[] {
                 "Podes deixar o Julia's Launcher enviar o hardware do teu PC ao edupode?",
                 "",
@@ -529,10 +543,13 @@ namespace VIctoryLauncher
                 "",
                 "You can turn it off any time on Hardware & ID.",
             });
+            // The text takes the height it needs (Portuguese and French wrap more); the buttons follow it.
+            int yb = FitText(text, 50) + 16;
+            f.ClientSize = new Size(660, yb + 62);
             f.Controls.Add(text);
-            var yes = new Pill { Main = true, Text = L("Yes, share my hardware", "Sim, partilhar o meu hardware"), Location = new Point(20, 456), Size = new Size(250, 42) };
-            var later = new Pill { Text = L("Not now", "Agora nao"), Location = new Point(280, 460), Size = new Size(140, 34) };
-            var never = new Pill { Text = L("Don't ask again", "Nao perguntar mais"), Location = new Point(430, 460), Size = new Size(190, 34) };
+            var yes = new Pill { Main = true, Text = L("Yes, share my hardware", "Sim, partilhar o meu hardware"), Location = new Point(20, yb), Size = new Size(250, 42) };
+            var later = new Pill { Text = L("Not now", "Agora nao"), Location = new Point(280, yb + 4), Size = new Size(140, 34) };
+            var never = new Pill { Text = L("Don't ask again", "Nao perguntar mais"), Location = new Point(430, yb + 4), Size = new Size(190, 34) };
             yes.Click += (s, e) => {
                 // The switch on Hardware & ID does the rest (its handler writes the setting and sends).
                 if (shareBox != null && !shareBox.Checked) shareBox.Checked = true;
@@ -543,7 +560,9 @@ namespace VIctoryLauncher
             later.Click += (s, e) => f.Close();
             never.Click += (s, e) => { WriteSetting("share_ask", "never"); f.Close(); };
             f.Controls.Add(yes); f.Controls.Add(later); f.Controls.Add(never);
+            f.CancelButton = later;
             f.ShowDialog(this);
+            f.Dispose();
         }
 
         // ---------------------------------------------------------------- notices, once each
@@ -658,15 +677,20 @@ namespace VIctoryLauncher
             var f = new Form { Text = title, ClientSize = new Size(700, 470), BackColor = Theme.Back, ForeColor = Theme.Text, Font = Theme.Ui(9.75f),
                 StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon };
             f.Controls.Add(new Heading(title) { Location = new Point(20, 16), Width = 660 });
-            f.Controls.Add(new Label { Location = new Point(20, 50), Size = new Size(660, 340), Text = body, ForeColor = Theme.Text, BackColor = Theme.Back });
-            var a = new Pill { Main = true, Text = first, Location = new Point(20, 408), Size = new Size(250, 42) };
-            var b = new Pill { Text = second, Location = new Point(280, 412), Size = new Size(220, 34) };
-            var c = new Pill { Text = L("Later", "Mais tarde"), Location = new Point(510, 412), Size = new Size(170, 34) };
+            var bodyLabel = new Label { Font = f.Font, Location = new Point(20, 50), Size = new Size(660, 340), Text = body, ForeColor = Theme.Text, BackColor = Theme.Back };
+            int yb = FitText(bodyLabel, 50) + 16;
+            f.ClientSize = new Size(700, yb + 62);
+            f.Controls.Add(bodyLabel);
+            var a = new Pill { Main = true, Text = first, Location = new Point(20, yb), Size = new Size(250, 42) };
+            var b = new Pill { Text = second, Location = new Point(280, yb + 4), Size = new Size(220, 34) };
+            var c = new Pill { Text = L("Later", "Mais tarde"), Location = new Point(510, yb + 4), Size = new Size(170, 34) };
             a.Click += (s, e) => { answer = 1; f.Close(); };
             b.Click += (s, e) => { answer = 2; f.Close(); };
             c.Click += (s, e) => f.Close();
             f.Controls.Add(a); f.Controls.Add(b); f.Controls.Add(c);
+            f.CancelButton = c;
             f.ShowDialog(this);
+            f.Dispose();
             return answer;
         }
 
@@ -674,10 +698,8 @@ namespace VIctoryLauncher
         Panel HardwarePage()
         {
             var page = Page();
-            const int X = 28, W = 900;
-            int y = 18;
-            page.Controls.Add(new Heading(L("Your ID", "O teu ID")) { Location = new Point(X, y), Width = W });
-            y += 32;
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Hardware & ID", "Hardware e ID", "Matériel et ID"), L("Hardware", "Hardware", "Matériel"), L("and your ID.", "e o teu ID.", "et ton ID."), L("Your ID, what this PC is made of, and which engine runs the game.", "O teu ID, de que e feito este PC, e que motor corre o jogo.", "Ton ID, de quoi ce PC est fait, et quel moteur lance le jeu."));
             idLabel = new Label { Location = new Point(X, y), Size = new Size(300, 40), Font = Theme.Mono(18f), ForeColor = Theme.Cyan, BackColor = Theme.Back, Text = "VI-····-····" };
             page.Controls.Add(idLabel);
             var copy = new Pill { Text = L("Copy ID", "Copiar ID"), Location = new Point(X + 310, y + 3), Size = new Size(120, 34) };
@@ -691,9 +713,9 @@ namespace VIctoryLauncher
 
             page.Controls.Add(new Heading(L("Hardware", "Hardware")) { Location = new Point(X, y), Width = W });
             y += 32;
-            hwText = new TextBox { Location = new Point(X, y), Size = new Size(W, 150), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Theme.Card, ForeColor = Theme.Text, Font = Theme.Mono(9f) };
+            hwText = new InfoCard { Location = new Point(X, y), Size = new Size(W, 56), Empty = L("Reading your hardware...", "A ler o teu hardware...", "Lecture de ton matériel...") };
             page.Controls.Add(hwText);
-            y += 162;
+            y += hwText.Height + 12;
 
             page.Controls.Add(new Heading(L("Engine", "Motor")) { Location = new Point(X, y), Width = W });
             y += 32;
@@ -708,12 +730,21 @@ namespace VIctoryLauncher
                 Log(L("Engine: ", "Motor: ") + EngineName);
                 UpdateBanner(); Refresh2();
             };
+            // The choice shows as two pills (as on Play); the list stays, hidden, for the code that sets it.
+            engineBox.Visible = false;
             page.Controls.Add(engineBox);
-            y += 34;
-            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 40), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
+            var hwStd = new Pill { Text = L("edupode · recommended", "edupode · recomendado", "edupode · recommandé"), Location = new Point(X, y), Size = new Size(230, 36) };
+            var hwAmd = new Pill { Text = L("Belobug AMD · for Radeon", "Belobug AMD · para Radeon", "Belobug AMD · pour Radeon"), Location = new Point(X + 240, y), Size = new Size(230, 36) };
+            hwStd.Click += (s, e) => { if (UseAmdEngine) engineBox.SelectedIndex = 0; };
+            hwAmd.Click += (s, e) => { if (!UseAmdEngine) engineBox.SelectedIndex = 1; };
+            showEnginePills += () => { hwStd.Main = !UseAmdEngine; hwAmd.Main = UseAmdEngine; hwStd.Invalidate(); hwAmd.Invalidate(); };
+            hwStd.Main = !UseAmdEngine; hwAmd.Main = UseAmdEngine;
+            page.Controls.Add(hwStd); page.Controls.Add(hwAmd);
+            y += 46;
+            page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 52), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
                 Text = L("Every card plays with the edupode engine: video memory from ~12 GB down to 6-8 GB, ~4x more textures in it, the most stable. For Radeon cards there is also VIctory-Belobug-AMD, Belobug's fork tuned for Radeon (github.com/Belobug/VIctory-Belobug-AMD, GPL-3.0; all credit for it is Belobug's), which Setup builds once.",
                          "Todas as placas jogam com o motor edupode: VRAM de ~12 GB para 6-8 GB, ~4x mais texturas, o mais estavel. Para placas Radeon ha tambem o VIctory-Belobug-AMD, o fork do Belobug afinado para Radeon (github.com/Belobug/VIctory-Belobug-AMD, GPL-3.0; todo o credito e do Belobug), que o Preparar compila uma vez.") });
-            y += 48;
+            y += 60;
 
             y = SavesSection(page, X, y, W);
             y = ReferencePcSection(page, X, y, W);
@@ -735,8 +766,11 @@ namespace VIctoryLauncher
             y += 44;
             page.Controls.Add(Small(L("Exactly what is sent:", "Exatamente o que e enviado:"), X, y, W));
             y += 22;
-            hwJson = new TextBox { Location = new Point(X, y), Size = new Size(W, 300), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Theme.Card, ForeColor = Theme.Dim, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical };
-            page.Controls.Add(hwJson);
+            // The text sits in a rounded card of the theme instead of a stock framed box.
+            var jsonCard = new CardPanel { Location = new Point(X, y), Size = new Size(W, 300) };
+            hwJson = new TextBox { Location = new Point(14, 12), Size = new Size(W - 24, 276), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = Theme.Card, ForeColor = Theme.Soft, Font = Theme.Mono(8.5f), ScrollBars = ScrollBars.Vertical, Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right };
+            jsonCard.Controls.Add(hwJson);
+            page.Controls.Add(jsonCard);
             page.Controls.Add(new Label { Location = new Point(X, y + 310), Size = new Size(10, 10), BackColor = Theme.Back });
             return page;
         }
@@ -744,10 +778,18 @@ namespace VIctoryLauncher
         void RefreshHardware()
         {
             new Thread(() => {
-                var h = ReadHardware();
+                HardwareInfo h = null;
+                try { h = ReadHardware(); } catch (Exception) { }
                 try
                 {
                     BeginInvoke(new Action(() => {
+                        if (h == null)
+                        {
+                            // Nothing could be read: say so instead of leaving the card blank.
+                            hwText.Empty = L("The hardware could not be read.", "Nao foi possivel ler o hardware.", "Le matériel n'a pas pu être lu.");
+                            hwText.Invalidate();
+                            return;
+                        }
                         hw = h;
                         idLabel.Text = h.Id;
                         hwText.Text = string.Join("\r\n", new[] {
@@ -760,6 +802,8 @@ namespace VIctoryLauncher
                             L("System disk   ", "Disco         ") + ": " + h.Disk + (h.Laptop ? L("  ·  laptop", "  ·  portatil") : ""),
                             L("Engine        ", "Motor         ") + ": " + EngineName,
                         });
+                        GrowTo(hwText, hwText.Fit());
+                        hwText.Invalidate();
                         hwJson.Text = HardwareJson(h).Replace("\n", "\r\n");
                         shareStatus.Text = HardwareEndpoint.Length == 0
                             ? L("The database is not online yet: nothing is sent, even with sharing on.", "A base de dados ainda nao esta online: nada e enviado, mesmo com a partilha ligada.")

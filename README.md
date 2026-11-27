@@ -296,6 +296,10 @@ More: [docs/GUIDE-30FPS.md](docs/GUIDE-30FPS.md) (English guide and what each se
 [docs/LUZ-24FPS.md](docs/LUZ-24FPS.md) (Portuguese notes), [docs/replay.md](docs/replay.md) (frame recorder).
 Earlier upstream notes: [docs/archive/README-upstream.md](docs/archive/README-upstream.md).
 
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 ---
 
 Maintained by **@edupode** on GitHub: <https://github.com/edupode>

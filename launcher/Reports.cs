@@ -75,7 +75,7 @@ namespace VIctoryLauncher
                     try
                     {
                         BeginInvoke(new Action(() => {
-                            f.Close();
+                            try { if (!f.IsDisposed) f.Close(); } catch (Exception) { }
                             if (zip == null) { MessageBox.Show(this, L("The package could not be made: ", "Nao deu para criar o pacote: ") + error, "Julia's Launcher"); return; }
                             try { Clipboard.SetText(summary); } catch (Exception) { }
                             try { Process.Start("explorer.exe", "/select,\"" + zip + "\""); } catch (Exception) { }
@@ -172,12 +172,13 @@ namespace VIctoryLauncher
         void SendReport(string zip, bool game, bool open)
         {
             var dir = zip.Substring(0, zip.Length - 4);
-            var viId = (hw ?? ReadHardware()).Id;
+            var hwNow = hw;
             new Thread(() => {
-                string said, issue = null;
+                string said, issue = null, viId = "";
                 bool sent = false;
                 try
                 {
+                    viId = (hwNow ?? ReadHardware()).Id;
                     byte[] data = null;
                     foreach (var tail in new[] { 400 * 1024, 150 * 1024, 40 * 1024 })
                     {
@@ -217,9 +218,10 @@ namespace VIctoryLauncher
                     said = r != null && (int)r.StatusCode == 429
                         ? L("Too many reports this hour: try again later, or use the GitHub issue.", "Demasiados relatorios nesta hora: tenta mais tarde, ou usa a issue do GitHub.")
                         : L("Could not send the report: ", "Nao deu para enviar o relatorio: ") + e.Message;
+                    if (r != null) r.Close();
                 }
                 catch (Exception e) { said = L("Could not send the report: ", "Nao deu para enviar o relatorio: ") + e.Message; }
-                Log(said);
+                SafeLog(said);
                 try
                 {
                     BeginInvoke(new Action(() => {

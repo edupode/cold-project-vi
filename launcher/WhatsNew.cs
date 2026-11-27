@@ -1,4 +1,4 @@
-// Julia's Launcher: "What's new", shown once after each install or update (launcher.ini's seen_version),
+﻿// Julia's Launcher: "What's new", shown once after each install or update (launcher.ini's seen_version),
 // and any time from Help. What changed, what got better, what was removed, in the player's language.
 // The release notes on GitHub (docs/RELEASE-NOTES.md) say the same; keep the two together.
 using System;
@@ -225,20 +225,75 @@ namespace VIctoryLauncher
 
         void ShowWhatsNew()
         {
-            var f = new Form { Text = L("What's new", "Novidades", "Nouveautés") + " · v" + Updater.Version, ClientSize = new Size(780, 600), BackColor = Theme.Back, ForeColor = Theme.Text,
-                Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon };
-            f.Controls.Add(new Heading(string.Format(L("What's new in v{0}", "Novidades da v{0}", "Nouveautés de la v{0}"), Updater.Version)) { Location = new Point(20, 16), Width = 740 });
-            var text = new TextBox { Location = new Point(20, 52), Size = new Size(740, 470), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = Theme.Card, ForeColor = Theme.Text,
-                Font = Theme.Ui(9.75f), ScrollBars = ScrollBars.Vertical, TabStop = false };
-            text.Text = string.Join("\r\n", Fr ? NewFr : Pt ? NewPt : NewEn);
-            f.Controls.Add(text);
-            var ok = new Pill { Main = true, Text = L("Got it", "Percebi", "Compris"), Location = new Point(600, 538), Size = new Size(160, 42) };
+            var f = Dialog(L("What's new", "Novidades", "Nouveautés") + " · v" + Updater.Version, 800, 660);
+            f.Controls.Add(new Heading(string.Format(L("What's new in v{0}", "Novidades da v{0}", "Nouveautés de la v{0}"), Updater.Version)) { Location = new Point(24, 18), Width = 750 });
+            // The notes in a rounded card that scrolls: a version line in the accent, a section name in peach, each
+            // bullet wrapped at the card's width (the lists above are written in short lines for the release notes).
+            var card = new RoundCard { Location = new Point(24, 58), Size = new Size(752, 480) };
+            var scroll = new Panel { Location = new Point(8, 8), Size = new Size(card.Width - 16, card.Height - 16), AutoScroll = true, BackColor = Theme.Card };
+            Kit.Dark(scroll, "DarkMode_Explorer");
+            card.Controls.Add(scroll);
+            f.Controls.Add(card);
+            int textW = scroll.Width - SystemInformation.VerticalScrollBarWidth - 24;
+            int y = 8;
+            var versionRule = new System.Text.RegularExpressions.Regex(@"\d+\.\d+\.\d+\s*$");
+            string current = null;
+            bool bullet = false;
+            Action flush = () => {
+                if (current == null) return;
+                var body = current.Trim();
+                current = null;
+                if (body.Length == 0) return;
+                var font = Theme.Ui(9.75f);
+                int x = bullet ? 34 : 14;
+                if (bullet) scroll.Controls.Add(new Label { Text = "•", Font = font, ForeColor = Theme.Cyan, BackColor = Theme.Card, AutoSize = false, Location = new Point(16, y), Size = new Size(16, 22), UseMnemonic = false });
+                var lb = Kit.Text(body, font, bullet ? Theme.Text : Theme.Soft, Theme.Card, x, y, textW - x);
+                scroll.Controls.Add(lb);
+                y += lb.Height + 6;
+            };
+            foreach (var raw in Fr ? NewFr : Pt ? NewPt : NewEn)
+            {
+                var line = raw.TrimEnd();
+                var trimmed = line.TrimStart();
+                int indent = line.Length - trimmed.Length;
+                if (trimmed.Length == 0) { flush(); y += 4; continue; }
+                if (trimmed.StartsWith("•")) { flush(); current = trimmed.Substring(1).Trim(); bullet = true; continue; }
+                if (indent > 0) { if (current == null) bullet = false; current = current == null ? trimmed : current + " " + trimmed; continue; }
+                flush();
+                bool version = versionRule.IsMatch(trimmed);
+                if (version)
+                {
+                    y += 8;
+                    var vf = Theme.UiBold(12f);
+                    var vl = Kit.Text(trimmed, vf, Theme.Cyan, Theme.Card, 14, y, textW - 14);
+                    scroll.Controls.Add(vl);
+                    y += vl.Height + 6;
+                }
+                else
+                {
+                    var hf = Theme.UiBold(9f);
+                    var hl = Kit.Text(trimmed, hf, Theme.Peach, Theme.Card, 14, y + 2, textW - 14);
+                    scroll.Controls.Add(hl);
+                    y += hl.Height + 8;
+                }
+            }
+            flush();
+            scroll.Controls.Add(new Label { Location = new Point(0, y + 8), Size = new Size(10, 6), BackColor = Theme.Card });
+
+            var ok = new Pill { Main = true, Text = L("Got it", "Percebi", "Compris"), Size = new Size(160, 42) };
             ok.Click += (s, e) => f.Close();
-            var safe = new Pill { Text = L("Is it safe?", "E seguro?", "Est-ce sûr ?"), Location = new Point(20, 542), Size = new Size(160, 34) };
+            var safe = new Pill { Text = L("Is it safe?", "E seguro?", "Est-ce sûr ?"), Size = new Size(160, 38) };
             safe.Click += (s, e) => OpenUrl(SafetyUrl);
-            var notes = new Pill { Text = L("All releases", "Todas as versoes", "Toutes les versions"), Location = new Point(190, 542), Size = new Size(160, 34) };
+            var notes = new Pill { Text = L("All releases", "Todas as versoes", "Toutes les versions"), Size = new Size(170, 38) };
             notes.Click += (s, e) => OpenUrl("https://github.com/felicienradio/cold-project-vi/releases");
+            int by = card.Bottom + 16;
+            safe.Size = new Size(Math.Max(safe.Width, Kit.PillW(safe.Text, 9.5f, 140)), 38);
+            notes.Size = new Size(Math.Max(notes.Width, Kit.PillW(notes.Text, 9.5f, 140)), 38);
+            safe.Location = new Point(24, by + 2);
+            notes.Location = new Point(safe.Right + 10, by + 2);
+            ok.Location = new Point(776 - ok.Width, by);
             f.Controls.Add(ok); f.Controls.Add(safe); f.Controls.Add(notes);
+            f.ClientSize = new Size(800, by + 42 + 22);
             f.AcceptButton = ok;
             f.ShowDialog(this);
         }

@@ -508,6 +508,8 @@ namespace VIctoryLauncher
             { "{0}×{1} internal upscaled to {2}p", "{0}×{1} interne agrandi en {2}p" },
             { "native {0}p", "{0}p natif" },
             { "Setup is still working (building VIctory or preparing shaders). PLAY opens when it finishes.", "Installation travaille encore (compilation de VIctory ou préparation des shaders). JOUER s'ouvre quand c'est fini." },
+            // 0.3.15 (the redesign)
+            { "Stopped a preparation left running by another launcher window.", "Préparation arrêtée : une autre fenêtre du launcher l'avait laissée tourner." },
             // 0.3.6
             { "Windows Security: 'Access denied' when building", "Sécurité Windows : « Accès refusé » à la compilation" },
             { "Only if a build from source ends with 'Access denied': Controlled folder access blocks freshly built programs. Opens Windows Security; allow victory.exe there yourself. The launcher never changes antivirus settings.", "Seulement si une compilation depuis le code se termine par « Accès refusé » : l'accès contrôlé aux dossiers bloque les programmes fraîchement compilés. Ouvre la Sécurité Windows ; autorise victory.exe toi-même. Le launcher ne modifie jamais les réglages de l'antivirus." },

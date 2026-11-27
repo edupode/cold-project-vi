@@ -63,12 +63,17 @@ namespace VIctoryLauncher
         Pill installNow;
         System.Threading.Timer updateTimer;
         int checking;
+        // The version this launcher installed without restarting (its files came, the launcher's own did not
+        // change): not downloaded and installed again every 5 minutes.
+        string installedVersion;
+        bool installing;
 
         void StartUpdates()
         {
             // The launcher an update replaced: gone once the new one runs.
             try { var old = Path.Combine(root, "Julia's Launcher.old.exe"); if (File.Exists(old)) File.Delete(old); } catch (Exception) { }
             updateTimer = new System.Threading.Timer(_ => CheckForUpdate(false), null, 3000, 5 * 60 * 1000);
+            FormClosed += (s, e) => { try { updateTimer.Dispose(); } catch (Exception) { } };
         }
 
         void CheckForUpdate(bool loud)
@@ -104,7 +109,7 @@ namespace VIctoryLauncher
                 if (!SignedByEdupode(manifestBytes, sig)) { SetUpdateState(L("An update was refused: its signature is not the project's.", "Um update foi recusado: a assinatura nao e a do projeto.")); return; }
                 var m = ParseManifest(Encoding.UTF8.GetString(manifestBytes));
                 if (m == null) { SetUpdateState(L("An update was refused: its list could not be read.", "Um update foi recusado: a lista nao se le.")); return; }
-                if (Updater.Number(m.Version) <= Updater.Number(Updater.Version))
+                if (Updater.Number(m.Version) <= Updater.Number(Updater.Version) || m.Version == installedVersion)
                 {
                     SetUpdateState(string.Format(L("Up to date (v{0}).", "Atualizado (v{0})."), Updater.Version));
                     if (loud) Log(L("No update: this is the latest version.", "Sem updates: esta e a versao mais recente."));
@@ -158,12 +163,54 @@ namespace VIctoryLauncher
             catch (Exception) { }
         }
 
+        // Any victory.exe at all (a game, or a tool another launcher window left): it holds the file an update replaces.
+        static bool VictoryRunning()
+        {
+            try
+            {
+                var all = Process.GetProcessesByName("victory");
+                foreach (var p in all) p.Dispose();
+                return all.Length > 0;
+            }
+            catch (Exception) { return false; }
+        }
+
         void Install()
         {
             var m = pending;
+            // Twice at once (the button and the timer, or the message below holding the window open): the second does nothing.
+            if (m == null || installing) return;
+            installing = true;
+            try { InstallNow(m); }
+            finally { installing = false; }
+        }
+
+        void InstallNow(Manifest m)
+        {
             bool launcher = false;
             try
             {
+                if (busyNow || setupBusy)
+                {
+                    SetUpdateState(string.Format(L("v{0} is ready: it installs when the current task ends.", "A v{0} esta pronta: instala-se quando a tarefa atual acabar.", "v{0} est prête : elle s'installe à la fin de la tâche en cours."), m.Version));
+                    return;
+                }
+                if (m.Files.Any(f => f.Name == "victory.exe" || f.Name.StartsWith("D3D12/")) && VictoryRunning())
+                {
+                    SetUpdateState(string.Format(L("v{0} is ready: it installs when VIctory is closed.", "A v{0} esta pronta: instala-se quando o VIctory fechar.", "v{0} est prête : elle s'installe quand VIctory est fermé."), m.Version));
+                    return;
+                }
+                // The files as they were checked on download: nothing is copied unless every one still matches.
+                foreach (var f in m.Files)
+                {
+                    var checkedFile = Path.Combine(pendingDir, f.Name.Replace('/', '\\'));
+                    if (!File.Exists(checkedFile) || new FileInfo(checkedFile).Length != f.Size || Sha256(checkedFile) != f.Sha256)
+                    {
+                        SetUpdateState(string.Format(L("v{0} was refused: {1} does not match its SHA-256.", "A v{0} foi recusada: o {1} nao bate com o SHA-256."), m.Version, f.Name));
+                        pending = null;
+                        return;
+                    }
+                }
                 foreach (var f in m.Files)
                 {
                     var from = Path.Combine(pendingDir, f.Name.Replace('/', '\\'));
@@ -179,7 +226,14 @@ namespace VIctoryLauncher
                     var old = Path.Combine(root, "Julia's Launcher.old.exe");
                     if (File.Exists(old)) File.Delete(old);
                     File.Move(me, old);
-                    File.Copy(Path.Combine(pendingDir, "Julia's Launcher.exe"), me, true);
+                    try { File.Copy(Path.Combine(pendingDir, "Julia's Launcher.exe"), me, true); }
+                    catch (Exception)
+                    {
+                        // Never leave the launcher without its program: the old one gets its name back.
+                        try { if (File.Exists(me)) File.Delete(me); } catch (Exception) { }
+                        try { if (!File.Exists(me)) File.Move(old, me); } catch (Exception) { }
+                        throw;
+                    }
                 }
                 Log(string.Format(L("Updated to v{0}.", "Atualizado para a v{0}."), m.Version));
                 // Shaders made by an older translator are made again (the Shaders page shows it).
@@ -188,10 +242,12 @@ namespace VIctoryLauncher
                 if (launcher)
                 {
                     MessageBox.Show(this, string.Format(L("Julia's Launcher was updated to v{0}. It opens again now.", "O Julia's Launcher foi atualizado para a v{0}. Volta a abrir agora."), m.Version), "Julia's Launcher");
-                    Process.Start(Application.ExecutablePath, "--wait-pid " + Process.GetCurrentProcess().Id);
+                    using (var cur = Process.GetCurrentProcess())
+                    using (Process.Start(Application.ExecutablePath, "--wait-pid " + cur.Id)) { }
                     Application.Exit();
                     return;
                 }
+                installedVersion = m.Version;
                 SetUpdateState(string.Format(L("Updated to v{0}.", "Atualizado para a v{0}."), m.Version));
             }
             catch (Exception e)
@@ -300,10 +356,8 @@ namespace VIctoryLauncher
         Panel UpdatesPage()
         {
             var page = Page();
-            const int X = 28, W = 900;
-            int y = 18;
-            page.Controls.Add(new Heading(L("Updates", "Atualizacoes")) { Location = new Point(X, y), Width = W });
-            y += 34;
+            const int X = 40, W = 900;
+            int y = PageTop(page, L("Updates", "Atualizacoes", "Mises à jour"), L("Updates", "Atualizacoes", "Mises à jour"), L("stay current.", "sempre em dia.", "toujours à jour."), null);
             updVersion = new Label { Location = new Point(X, y), Size = new Size(W, 28), Font = Theme.Mono(12f), ForeColor = Theme.Text, BackColor = Theme.Back };
             page.Controls.Add(updVersion);
             y += 32;
@@ -330,8 +384,9 @@ namespace VIctoryLauncher
             y += 70;
             page.Controls.Add(new Heading(L("What changed", "O que mudou")) { Location = new Point(X, y), Width = W });
             y += 30;
-            updNotes = new TextBox { Location = new Point(X, y), Size = new Size(W, 220), Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Theme.Card, ForeColor = Theme.Text, Font = Theme.Ui(9.5f), ScrollBars = ScrollBars.Vertical };
-            page.Controls.Add(updNotes);
+            updNotes = new TextBox { Multiline = true, ReadOnly = true, BorderStyle = BorderStyle.None, ForeColor = Theme.Text, Font = Theme.Ui(9.5f), ScrollBars = ScrollBars.Vertical };
+            Kit.Dark(updNotes, "DarkMode_Explorer");
+            page.Controls.Add(FieldFor(updNotes, X, y, W, 220, true));
             y += 232;
             page.Controls.Add(new Label { Location = new Point(X, y), Size = new Size(W, 80), ForeColor = Theme.Dim, BackColor = Theme.Back, Font = Theme.Ui(9f),
                 Text = L("Updates come only from github.com/felicienradio/cold-project-vi releases. Each one is signed with the project's release key; a file is installed only when the signature and its SHA-256 match. Anyone can check a release's files against the source code (README: 'Checking a release').",
