@@ -64,7 +64,49 @@ fn named(shaders: &[Arc<Shader>], name: &[u8]) -> bool {
         .any(|s| s.stage == "compute" && s.container.windows(name.len()).any(|w| w == name))
 }
 
+/// Shader hashes whose pipelines are left out in every build
+/// (`VICTORY_LEAVE_OUT=<16 hex digits>[,..]`; `VICTORY_SKIP_PIPELINES` does
+/// the same in diagnostics builds only). The decal heap's
+/// `CS_DefragHeap_ComputeRelocations` (02384a60fda6f2d0), translatable for
+/// 32-lane hosts through host waves that meet by spinning, took 11.85 ms of
+/// the card a frame in the first gameplay area (timing run, 2026-11-26).
+fn leave_out() -> &'static [String] {
+    static HASHES: OnceLock<Vec<String>> = OnceLock::new();
+    HASHES.get_or_init(|| {
+        std::env::var("VICTORY_LEAVE_OUT")
+            .unwrap_or_default()
+            .split(',')
+            .map(|h| h.trim().to_ascii_lowercase())
+            .filter(|h| h.len() == 16 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+            .collect()
+    })
+}
+
+/// The light in the water's volume, in tiles (`water_shading:CS_TransmissionVolumetrics_Tiled`
+/// and `_Tiled_LocalLights`, GTA VI 1.0.2.1): programs of one 64-lane wave a group, which a
+/// host of 32-lane waves gets in the wave-wide form only (`victory_shader::emit`, 4 and 7
+/// branches taken wave-wide). In that form they leave whole tiles of open water dark, around
+/// boats, along shores and under bridges, and take about 15 ms of the card a frame (RTX 5070,
+/// runs r_water1 and r_water3 of 2026-11-26: 25 fps with them, 30 without, the blocks gone;
+/// fxceless/victory-fork's README of 2026-11-27 names the same two programs and form). Left
+/// out there, the water has no light of its own depth (darker, bluer) and no blocks;
+/// `VICTORY_WATER_LIGHT=1` runs them as before.
+const WATER_LIGHT: [&str; 2] = ["5dc3b25986622949", "6f225b641c5b0708"];
+
+fn water_light_left_out(shaders: &[Arc<Shader>]) -> bool {
+    static ASKED: OnceLock<bool> = OnceLock::new();
+    !*ASKED.get_or_init(|| std::env::var_os("VICTORY_WATER_LIGHT").is_some_and(|v| v == "1"))
+        && victory_shader::emit::host_settings()[0] == 32
+        && shaders.iter().any(|s| WATER_LIGHT.contains(&s.hash.as_str()))
+}
+
 fn left_out(shaders: &[Arc<Shader>]) -> Option<&'static str> {
+    if !leave_out().is_empty() && shaders.iter().any(|s| leave_out().contains(&s.hash)) {
+        return Some("named in VICTORY_LEAVE_OUT, left out");
+    }
+    if water_light_left_out(shaders) {
+        return Some("the water's tiled light on a host of 32-lane waves (dark blocks; VICTORY_WATER_LIGHT=1 runs it), left out");
+    }
     static SKIP_RT_RESOLVE: OnceLock<bool> = OnceLock::new();
     let skip_rt = *SKIP_RT_RESOLVE.get_or_init(|| {
         let builder = std::env::var_os("VICTORY_BVH_BUILDER").is_some_and(|v| v == "1");
@@ -161,10 +203,16 @@ impl Pending {
     }
 }
 
-/// Why a pipeline has no host pipeline (diagnostics): its shaders that do
-/// not translate, else "refused" or "being made"; `None` if it has one.
+/// Why a pipeline has no host pipeline (diagnostics): left out on purpose
+/// ([`left_out`]), its shaders that do not translate, else "refused" or
+/// "being made"; `None` if it has one. (A pipeline left out is never made:
+/// it was counted as "being made" in every frame, some 630 indirect
+/// ray-tracing resolves a frame in gameplay, while no pipeline was queued.)
 #[cfg(feature = "diagnostics")]
 pub(crate) fn missing(p: &Pending) -> Option<String> {
+    if let Some(why) = p.left_out {
+        return Some(format!("left out on purpose: {why}"));
+    }
     match p.made.get() {
         Some(Some(_)) => None,
         None => Some("being made".into()),
@@ -224,6 +272,15 @@ fn screens_first() -> bool {
 /// Pipelines queued and not made yet.
 static WAITING: AtomicU64 = AtomicU64::new(0);
 
+/// Draws and dispatches (direct and indirect) asked of a pipeline left out on
+/// purpose ([`left_out`]), since the last [`take_left_out`].
+static LEFT_OUT: AtomicU64 = AtomicU64::new(0);
+
+/// See [`LEFT_OUT`] (for the frame line).
+pub(crate) fn take_left_out() -> u64 {
+    LEFT_OUT.swap(0, Ordering::Relaxed)
+}
+
 /// Pipelines queued and not made yet (for the frame line).
 pub(crate) fn waiting() -> u64 {
     WAITING.load(Ordering::Relaxed)
@@ -279,6 +336,7 @@ fn variant<'a>(p: &'a Arc<Pending>, g: &GraphicsState, bound: &TargetFormats) ->
 /// queues it on first use.
 pub(crate) fn ready(p: &Arc<Pending>) -> Option<&HostPipeline> {
     if p.left_out.is_some() {
+        LEFT_OUT.fetch_add(1, Ordering::Relaxed);
         return None;
     }
     // A still-pending pipeline was requested by the title too. Prewarm it
@@ -676,6 +734,28 @@ mod tests {
             std::thread::yield_now();
         }
         assert!(matches!(p.made.get(), Some(None)));
+    }
+
+    /// A pipeline left out on purpose (a ray-tracing resolve without the structure builder)
+    /// is never queued, so never made: it is counted as left out, and named so, not as
+    /// "being made" (some 630 indirect dispatches a frame were, in every gameplay frame).
+    #[test]
+    fn pipelines_left_out_are_counted_and_never_queued() {
+        let mut p = Pending::new(Vec::new(), None);
+        p.left_out = Some("shades ray-tracing hits without BVH, left out");
+        let p = Arc::new(p);
+        let before = LEFT_OUT.load(Ordering::Relaxed);
+        assert!(ready(&p).is_none());
+        assert!(ready(&p).is_none());
+        assert!(!now(&p));
+        assert_eq!(p.queue_state.load(Ordering::Relaxed), NOT_QUEUED);
+        assert!(p.made.get().is_none());
+        assert!(LEFT_OUT.load(Ordering::Relaxed) >= before + 2);
+        #[cfg(feature = "diagnostics")]
+        assert_eq!(
+            missing(&p).as_deref(),
+            Some("left out on purpose: shades ray-tracing hits without BVH, left out")
+        );
     }
 
     #[test]
