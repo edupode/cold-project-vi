@@ -740,6 +740,8 @@ pub(super) fn wave_local(p: &Program, st: &Structured) -> Result<(), (usize, &'s
             Fields::Buffer { data, .. } if name.contains("_atomic_") || name.contains("_store_") => {
                 data.iter().copied().collect()
             }
+            // An add on a counter in the group's shared memory: the reservation too (below).
+            Fields::Ds { data, gds: false, .. } if matches!(name, "ds_add_rtn_u32" | "ds_add_u32") => data.clone(),
             _ => Vec::new(),
         };
         let kinds: Vec<Wave> = ops.iter().map(|o| of(kind, val(o))).collect();
@@ -827,7 +829,17 @@ pub(super) fn wave_local(p: &Program, st: &Structured) -> Result<(), (usize, &'s
             ("v_lshl_add_u32", [Wave::Prefix, Wave::Plain, c]) if !wild(*c) => {
                 if *c == Wave::Base { Wave::Base } else { Wave::Prefix }
             }
-            // the reservation: the first lane adds its wave's total to a shared counter
+            // the reservation: the first lane adds its wave's total to a shared counter, in memory
+            // or in the group's LDS (`ds_add_rtn_u32`: the triangle clip's CS_CollectTriangles_
+            // Meshlets, groups of 1024 whose LDS is all taken, so its host waves cannot meet; each
+            // reserving its own slots on the group's counter gives the same set of slots)
+            (_, [Wave::Total(Op::AddU)]) if matches!(name, "ds_add_rtn_u32" | "ds_add_u32") => {
+                if !first_mask(firsts, inst.read(Reg::S(EXEC))) {
+                    return Err(TOTAL);
+                }
+                reserved = true;
+                Wave::Base
+            }
             (_, [Wave::Total(op)]) if name.contains("_atomic_") => {
                 let want = match op {
                     Op::AddU => "buffer_atomic_add",
