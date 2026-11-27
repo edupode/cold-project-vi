@@ -1,4 +1,4 @@
-﻿// The Setup page: everything a first run needs, checked and done for the player. Each step says
+// The Setup page: everything a first run needs, checked and done for the player. Each step says
 // whether it is done and has a button that does it; "Do everything for me" runs the missing ones
 // in order. Steps that change Windows ask for administrator rights (the UAC prompt) or a
 // confirmation first; nothing restarts the PC without a yes.
@@ -663,6 +663,10 @@ namespace VIctoryLauncher
             foreach (var st in steps) { st.Button.Enabled = false; st.Button.Invalidate(); }
             everything.Enabled = false; everything.Invalidate();
             new Thread(() => {
+              // Whatever happens in a step, Setup stops being busy at the end: a step that threw past its own
+              // catch left setupBusy on, and PLAY stayed grey until the launcher was opened again.
+              try
+              {
                 int i = 0;
                 foreach (var st in which)
                 {
@@ -685,6 +689,10 @@ namespace VIctoryLauncher
                 }
                 Progress(L("Done.", "Feito."), 1f);
                 Thread.Sleep(800);
+              }
+              catch (Exception e) { try { File.AppendAllText(Program.ErrorFile, DateTime.Now + "  setup: " + e + Environment.NewLine); } catch (Exception) { } }
+              finally
+              {
                 setupBusy = false;
                 Post(() => {
                     setupBar.Visible = false;
@@ -693,6 +701,7 @@ namespace VIctoryLauncher
                     foreach (var st in steps) { st.Button.Enabled = true; st.Button.Invalidate(); }
                     Refresh2();
                 });
+              }
             }) { IsBackground = true }.Start();
         }
 

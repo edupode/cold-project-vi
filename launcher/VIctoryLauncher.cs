@@ -1511,8 +1511,13 @@ namespace VIctoryLauncher
             bool ready = game && exe != null && state != GameState.Running && !busyNow && !setupBusy;
             playButton.Enabled = ready;
             if (prepareButton != null) { prepareButton.Enabled = ready && state == GameState.None; prepareButton.Invalidate(); }
+            // When PLAY is off, the button says why (it said only "Play", grey, and players thought it broken).
             playButton.Text = state == GameState.Running ? L("Running", "A correr", "En cours") : busyNow ? L("Wait...", "Espera...", "Attends...")
-                : state == GameState.Stuck ? L("Close and play  →", "Fechar e jogar  →", "Fermer et jouer  →") : L("Play  →", "Jogar  →", "Jouer  →");
+                : state == GameState.Stuck ? L("Close and play  →", "Fechar e jogar  →", "Fermer et jouer  →")
+                : setupBusy ? L("Setup is working...", "O Preparar esta a trabalhar...", "La préparation travaille...")
+                : !game ? L("Choose the game first", "Escolhe o jogo primeiro", "Choisis le jeu d'abord")
+                : exe == null ? L("Build VIctory first", "Compila o VIctory primeiro", "Compile VIctory d'abord")
+                : L("Play  →", "Jogar  →", "Jouer  →");
             closeButton.Visible = state != GameState.None;
             closeButton.Text = state == GameState.Stuck ? L("Close stuck game", "Fechar jogo preso") : L("Close game", "Fechar o jogo");
             if (tips == null) tips = new ToolTip();
