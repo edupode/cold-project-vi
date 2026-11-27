@@ -104,6 +104,15 @@ pub(crate) fn lower(parts: &Parts) -> Result<Lowered, ShaderError> {
 /// where two host waves of 32 stand for a console wave (they exchange, which
 /// takes all lanes).
 /// LOCAL: `VICTORY_NAN_SCRUB=1` (off by default): see `Lower::scrub_nan`.
+/// LOCAL: `VICTORY_INF_AS=<magnitude>`: what an infinite colour a pixel shader writes is held at
+/// (with `VICTORY_NAN_SCRUB=1`); unset, 0 or not a finite positive number: made 0.
+pub(crate) fn inf_as() -> Option<f32> {
+    static V: std::sync::OnceLock<Option<f32>> = std::sync::OnceLock::new();
+    *V.get_or_init(|| {
+        std::env::var("VICTORY_INF_AS").ok().and_then(|s| s.trim().parse::<f32>().ok()).filter(|v| v.is_finite() && *v > 0.0)
+    })
+}
+
 pub(crate) fn nan_scrub() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("VICTORY_NAN_SCRUB").is_some_and(|v| v == "1"))
@@ -12244,8 +12253,33 @@ impl<'a> Lower<'a> {
     /// NVIDIA as black blobs on faces and in the air). Not what the console
     /// does, so it is a switch; part of the shader cache key.
     fn scrub_nan(&mut self, f: V) -> V {
+        self.scrub(f, false)
+    }
+
+    /// [`Self::scrub_nan`] for a colour a pixel shader writes: an infinity there is held at
+    /// `VICTORY_INF_AS` (its magnitude, sign kept; unset or 0: made 0 like the rest). The sun's
+    /// disc is an infinity there, and made 0 it showed black. Held at 65504 in every store (0.3.12)
+    /// the whole picture went cyan and dark, so image stores (compute: exposure, lighting) keep
+    /// making infinities 0, and the value is a switch to try in game before it is a default.
+    fn scrub_colour(&mut self, f: V) -> V {
+        self.scrub(f, true)
+    }
+
+    fn scrub(&mut self, f: V, colour: bool) -> V {
         if !nan_scrub() {
             return f;
+        }
+        if colour
+            && let Some(top) = inf_as()
+        {
+            let c = self.cur;
+            let nan = self.s.m.cmp(c, pred::UNO, f, f);
+            let zero = self.s.m.f32(0);
+            let clean = self.s.m.select(c, nan, zero, f);
+            let hi = self.s.m.f32(top.to_bits());
+            let lo = self.s.m.f32((-top).to_bits());
+            let below = self.binary(36, clean, hi);
+            return self.binary(35, below, lo);
         }
         // NaN or an infinity (11/26: the whole picture went white at one
         // angle with only NaN scrubbed: an infinity through bloom or the
@@ -12465,7 +12499,7 @@ impl<'a> Lower<'a> {
             let (suffix, x) = match el.comp {
                 9 if half.is_some() => {
                     let f = self.as_float(x);
-                    (".f32", if colour { self.scrub_nan(f) } else { f })
+                    (".f32", if colour { self.scrub_colour(f) } else { f })
                 }
                 9 => {
                     let f = match self.floats.get(&value) {
@@ -12475,7 +12509,7 @@ impl<'a> Lower<'a> {
                     // LOCAL: `VICTORY_NAN_SCRUB=1`: a colour a pixel shader
                     // writes is 0 where it is NaN, so one bad value does not
                     // spread through the title's blur and temporal passes.
-                    let f = if colour { self.scrub_nan(f) } else { f };
+                    let f = if colour { self.scrub_colour(f) } else { f };
                     (".f32", f)
                 }
                 _ => (".i32", x),

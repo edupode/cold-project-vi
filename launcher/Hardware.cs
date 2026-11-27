@@ -199,8 +199,43 @@ namespace VIctoryLauncher
         // Which frame generation this PC gets: NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30,
         // when the release brought it), else VIctory's own (VICTORY_FRAMEGEN, any card; this
         // repository's engine only, the AMD engine does not have it yet).
-        bool NvSmoothHere { get { return rtx30 && File.Exists(NvSmoothDll); } }
-        bool OwnFrameGen { get { return !rtxFrameGen && !NvSmoothHere && !UseAmdEngine; } }
+        bool NvSmoothHere { get { return rtx30 && File.Exists(NvSmoothDll) && (FgChoice == "auto" || FgChoice == "nvsmooth30"); } }
+        bool OwnFrameGen { get { return !rtxFrameGen && !NvSmoothHere && !UseAmdEngine && (FgChoice == "auto" || FgChoice == "vi"); } }
+
+        // The frame generation the player picked (launcher.ini fg_engine): auto (the best this card has), smooth
+        // (NVIDIA Smooth Motion, RTX 40/50), nvsmooth30 (RTX 30, experimental) or vi (VIctory's own, any card,
+        // experimental). A choice the card cannot have falls to none (the box only lists what it can).
+        string FgChoice { get { var v = ReadSetting("fg_engine"); return v == "smooth" || v == "nvsmooth30" || v == "vi" ? v : "auto"; } }
+
+        ComboBox fgBox;
+        readonly List<string> fgKeys = new List<string>();
+
+        // The choices this card has, once the card is known (DetectSystem).
+        void FillFgBox()
+        {
+            if (fgBox == null) return;
+            fgKeys.Clear(); fgBox.Items.Clear();
+            Action<string, string> add = (key, text) => { fgKeys.Add(key); fgBox.Items.Add(text); };
+            add("auto", L("Automatic (the best this card has)", "Automatico (o melhor desta placa)", "Automatique (le meilleur de cette carte)"));
+            if (canSmooth) add("smooth", L("NVIDIA Smooth Motion (RTX 40/50)", "NVIDIA Smooth Motion (RTX 40/50)", "NVIDIA Smooth Motion (RTX 40/50)"));
+            if (rtx30 && File.Exists(NvSmoothDll)) add("nvsmooth30", L("NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, expérimental)"));
+            if (!UseAmdEngine && !integratedOnly) add("vi", L("VIctory 2X (any card, experimental)", "VIctory 2X (qualquer placa, experimental)", "VIctory 2X (toute carte, expérimental)"));
+            var i = fgKeys.IndexOf(FgChoice);
+            fgBox.SelectedIndex = i < 0 ? 0 : i;
+        }
+
+        void PickFg()
+        {
+            if (fgBox == null || fgBox.SelectedIndex < 0 || fgBox.SelectedIndex >= fgKeys.Count) return;
+            var key = fgKeys[fgBox.SelectedIndex];
+            if (key == FgChoice) return;
+            WriteSetting("fg_engine", key);
+            rtxFrameGen = canSmooth && (key == "auto" || key == "smooth");
+            if (smoothBox is OptionCard) ((OptionCard)smoothBox).Line = FrameGenLine();
+            smoothBox.Invalidate();
+            UpdateBanner(); Refresh2();
+            Log(L("Frame generation: ", "Geracao de frames: ", "Génération d'images : ") + fgBox.SelectedItem);
+        }
         // (VIctory's own frame generation needs memory an integrated GPU does not have.)
         // "dedicated, 12.0 GB of its own" / "integrated, 0.1 GB of its own (shares RAM)", for the hardware page and reports.
         string GpuKind()
@@ -235,6 +270,8 @@ namespace VIctoryLauncher
         // beside victory.exe (taken away again when the game closes: RemoveNvSmooth).
         void ApplyFrameGen()
         {
+            // Another frame generation picked: the driver's Smooth Motion goes off, or the frames would be doubled twice.
+            if (canSmooth && !rtxFrameGen && smoothState == "on") ApplySmooth(false, false);
             if (rtxFrameGen)
             {
                 if (smoothBox.Checked && smoothState != "on") ApplySmooth(true, false);

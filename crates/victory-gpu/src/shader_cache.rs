@@ -66,6 +66,7 @@ fn build() -> [u8; 32] {
             "VICTORY_BVH_MISS",
             // LOCAL: colours and image stores with NaN made 0.
             "VICTORY_NAN_SCRUB",
+            "VICTORY_INF_AS",
             // LOCAL (fxceless #1216): constant buffer slots marked.
             "VICTORY_CONSTANT_MARKS",
             "VICTORY_WAVE_WIDE",

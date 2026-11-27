@@ -134,6 +134,8 @@ namespace VIctoryLauncher
         readonly List<NavButton> nav = new List<NavButton>();
 
         bool rebar, rtxFrameGen;
+        // The card can use NVIDIA Smooth Motion (RTX 40/50); rtxFrameGen: it is the frame generation picked.
+        bool canSmooth;
         // Resizable BAR as the card reports it (nvidia-smi's BAR1 of 1 GB and more) and as D3D12
         // offers it to a run (`victory gpu`: GPU upload heaps; -1 not asked yet).
         bool rebarBios;
@@ -752,6 +754,12 @@ namespace VIctoryLauncher
             facesBox = T(L("Rainbow-face fix", "Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 2, 0, false);
             loadingBox = T(L("Fast loading (experimental)", "Carregamento rapido (experimental)"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 2, 1, false);
             y += 4 * 70 + 14;
+            // Which frame generation, when the switch above is on.
+            page.Controls.Add(new Label { Text = L("Frame generation engine", "Motor de geracao de frames", "Moteur de génération d'images"), Location = new Point(X, y + 6), AutoSize = true, ForeColor = Theme.Soft, BackColor = Theme.Back, Font = Theme.Ui(9.5f) });
+            fgBox = new ComboBox { Location = new Point(X + 220, y + 2), Width = 340, DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.Card, ForeColor = Theme.Text };
+            fgBox.SelectedIndexChanged += (s, e) => PickFg();
+            page.Controls.Add(fgBox);
+            y += 40;
             explain = new Label { Location = new Point(X, y), Size = new Size(W, 40), ForeColor = Theme.Muted, BackColor = Theme.Back, Font = Theme.Ui(9f),
                 Text = L("Point at an option for the details. Tested: tried on edupode's PC (RTX 5070 Ti laptop).", "Passa o rato por uma opcao para ver os detalhes. Testado: experimentado no PC do edupode (portatil RTX 5070 Ti).", "Survole une option pour les détails. Testé : essayé sur le PC d'edupode (portable RTX 5070 Ti).") };
             page.Controls.Add(explain);
@@ -1717,13 +1725,15 @@ namespace VIctoryLauncher
                         barRead = true;
                         if (bar >= 1024) rebarBios = true;
                     }
-                    rtxFrameGen = Regex.IsMatch(gpuName, @"RTX\s*(40|50)\d\d");
+                    canSmooth = Regex.IsMatch(gpuName, @"RTX\s*(40|50)\d\d");
+            rtxFrameGen = canSmooth && (FgChoice == "auto" || FgChoice == "smooth");
                 }
                 var mem = new Microsoft.VisualBasic.Devices.ComputerInfo();
                 ramGb = mem.TotalPhysicalMemory / 1073741824.0;
             }
             catch (Exception) { }
             DetectCards();
+            FillFgBox();
             rebar = rebarBios;
             if (!FrameGenAvailable) smoothBox.Checked = false;
             // Integrated graphics, once: the lightest options whatever an earlier launcher saved (it had read the
