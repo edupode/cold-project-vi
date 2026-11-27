@@ -374,8 +374,7 @@ namespace VIctoryLauncher
         {
             get
             {
-                var mine = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cargo", "bin", "cargo.exe");
-                return File.Exists(mine) ? mine : "cargo";
+                return FoundCargo() ?? "cargo";
             }
         }
 
@@ -497,7 +496,7 @@ namespace VIctoryLauncher
                 Why = L("The compiler VIctory is written for. Installed with winget (rustup).", "O compilador do VIctory. Instalado com o winget (rustup)."),
                 FixText = L("Install", "Instalar"),
                 // Not needed with a ready-made emulator (a release or the installer put victory.exe here).
-                Check = () => NothingToBuild ? -1 : File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cargo", "bin", "cargo.exe")) || RunCapture("where", "cargo").Contains("cargo") ? 1 : 0,
+                Check = () => NothingToBuild ? -1 : HasCargo() ? 1 : 0,
                 Fix = () => Winget("Rustlang.Rustup", null),
             });
             steps.Add(new Step {
@@ -742,12 +741,27 @@ namespace VIctoryLauncher
         {
             var vswhere = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft Visual Studio", "Installer", "vswhere.exe");
             if (!File.Exists(vswhere)) return false;
-            var s = RunCapture(vswhere, "-products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath");
+            var s = RunCapture(vswhere, "-products * -prerelease -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath");
             return !string.IsNullOrEmpty(s.Trim());
         }
 
         // A ready-made emulator is here (a release, or the installer): nothing has to be compiled.
-        bool NothingToBuild { get { return !UseAmdEngine && (File.Exists(Path.Combine(root, "victory.exe")) || File.Exists(Path.Combine(AppDir, "victory.exe"))); } }
+        // Rust and the C++ tools are asked for only while an engine still has to be compiled: the engine in use is
+        // there already (a release's victory.exe, a build from source, or Belobug's AMD engine built once). Players
+        // with both installed were asked again after an update (27/11/2026).
+        bool NothingToBuild { get { return VictoryExe != null || (!UseAmdEngine && (File.Exists(Path.Combine(root, "victory.exe")) || File.Exists(Path.Combine(AppDir, "victory.exe")))); } }
+
+        // cargo.exe where rustup puts it: %CARGO_HOME%\bin when set, else %USERPROFILE%\.cargo\bin, or anywhere on PATH.
+        static string FoundCargo()
+        {
+            var home = Environment.GetEnvironmentVariable("CARGO_HOME");
+            if (!string.IsNullOrEmpty(home) && File.Exists(Path.Combine(home, "bin", "cargo.exe"))) return Path.Combine(home, "bin", "cargo.exe");
+            var mine = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cargo", "bin", "cargo.exe");
+            if (File.Exists(mine)) return mine;
+            return RunCapture("where", "cargo").Contains("cargo") ? "cargo" : null;
+        }
+
+        static bool HasCargo() { return FoundCargo() != null; }
 
         // Where this repository's source is: beside the launcher (or a folder above it), or the copy
         // the launcher downloaded. A launcher copied on its own to Downloads has none beside it
