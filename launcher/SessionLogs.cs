@@ -191,7 +191,7 @@ namespace VIctoryLauncher
             sb.AppendLine("Julia's Launcher game log");
             sb.AppendLine("ID: " + h.Id);
             sb.AppendLine("Kind: session");
-            sb.AppendLine("Launcher: v" + Updater.Version + "   Engine: " + EngineName + "   Preset: " + Selected.Name + "   Output: " + OutputHeight + "p");
+            sb.AppendLine("Launcher: v" + Updater.Version + "   Engine: " + EngineName + "   Preset: " + PresetKey + "   Output: " + OutputHeight + "p");
             sb.AppendLine("GPU: " + h.Gpu + " (" + h.VramMb / 1024 + " GB, driver " + h.Driver + ")   " + RebarText() + "   VIctory runs on: " + probeAdapter);
             sb.AppendLine("CPU: " + h.Cpu + "   RAM: " + h.RamGb + " GB   Board: " + h.BoardMaker + " " + h.Board);
             sb.AppendLine("Windows: " + h.Os + "   Disk: " + h.Disk + (h.Laptop ? "   laptop" : ""));

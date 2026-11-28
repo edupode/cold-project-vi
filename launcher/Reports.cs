@@ -120,7 +120,7 @@ namespace VIctoryLauncher
             sb.AppendLine("Julia's Launcher error report");
             sb.AppendLine("ID: " + h.Id);
             sb.AppendLine("Kind: " + (game ? "game errors" : "launcher errors"));
-            sb.AppendLine("Launcher: v" + Updater.Version + "   Engine: " + EngineName + "   Preset: " + Selected.Name);
+            sb.AppendLine("Launcher: v" + Updater.Version + "   Engine: " + EngineName + "   Preset: " + PresetKey);
             sb.AppendLine("GPU: " + h.Gpu + " (" + h.VramMb / 1024 + " GB, driver " + h.Driver + ")   " + RebarText() + "   VIctory runs on: " + probeAdapter);
             sb.AppendLine("GPU type: " + (integratedOnly ? "integrated only" : "dedicated") + "   Adapters: " + string.Join("; ", adapters.ConvertAll(a => a.VendorName + " " + a.Name + " (" + a.DedicatedMb + " MB own, " + a.SharedMb + " MB shared" + (a.Integrated ? ", integrated" : "") + ")").ToArray()));
             sb.AppendLine("CPU: " + h.Cpu + "   RAM: " + h.RamGb + " GB   Board: " + h.BoardMaker + " " + h.Board);

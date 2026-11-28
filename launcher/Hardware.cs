@@ -605,6 +605,10 @@ namespace VIctoryLauncher
         // The presets by their English names, the same whatever the launcher's language (for the averages).
         static readonly string[] ModeKeys = { "Recommended", "Fastest", "Modest PC", "Sharp", "Classic cgbj", "Ultra Low", "Custom" };
 
+        // The preset by its English key, whatever the launcher's language: reports and summaries group by it
+        // (scripts/report-stats.py).
+        string PresetKey { get { return modeIndex >= 0 && modeIndex < ModeKeys.Length ? ModeKeys[modeIndex] : Selected.Name; } }
+
         // A game's FPS from its log: the engine's "victory_gpu::host: N fps, ..." lines every 5 seconds, the first
         // 90 seconds left out (loading). Kept for the next hardware report only after 3 minutes or more of play:
         // the median and the slowest 5 %, the preset, the engine and this launcher's version.
