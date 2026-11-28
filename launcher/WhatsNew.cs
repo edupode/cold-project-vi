@@ -19,6 +19,11 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.26",
+            "  •  No more closing a second in with DLSS at full resolution (DLAA runs as DLSS Quality).",
+            "  •  A warning when the game's folder is incomplete, with what is missing.",
+            "  •  A language picker, now with Español; translations are files anyone can add.",
+            "",
             "IN 0.3.25",
             "  •  The emulator always matches the launcher's version (engine fixes reach every PC).",
             "  •  Reports list the game's folder (names and sizes) to spot an incomplete package.",
@@ -135,6 +140,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.26",
+            "  •  Ja nao fecha um segundo depois de arrancar com DLSS a resolucao inteira (DLAA corre como Qualidade).",
+            "  •  Um aviso quando a pasta do jogo esta incompleta, com o que falta.",
+            "  •  Um seletor de lingua, agora com Español; as traducoes sao ficheiros que qualquer um pode acrescentar.",
+            "",
             "NA 0.3.25",
             "  •  O emulador corresponde sempre a versao do launcher (as correcoes do motor chegam a todos).",
             "  •  Os relatorios listam a pasta do jogo (nomes e tamanhos) para ver um pacote incompleto.",
@@ -251,6 +261,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.26",
+            "  •  Ne se ferme plus une seconde après le démarrage avec le DLSS en pleine résolution (DLAA en Qualité).",
+            "  •  Un avertissement quand le dossier du jeu est incomplet, avec ce qui manque.",
+            "  •  Un choix de langue, avec Español ; les traductions sont des fichiers que tout le monde peut ajouter.",
+            "",
             "DANS LA 0.3.25",
             "  •  L'émulateur correspond toujours à la version du lanceur (les correctifs arrivent partout).",
             "  •  Les rapports listent le dossier du jeu (noms et tailles) pour repérer un paquet incomplet.",

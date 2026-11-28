@@ -1,4 +1,6 @@
-Julia's Launcher 0.3.25: the emulator always matches the launcher, and reports show the game's folder.
+Julia's Launcher 0.3.26: no more stop a second in with DLSS at full scale, a warning for an incomplete game, and a language picker with Spanish.
 
-- When the launcher opens, it checks that the emulator (victory.exe) is the one its own update brought; if it is not, it puts that one in place. One PC had launcher 0.3.24 running 0.3.21's emulator, so none of the newer engine fixes reached it.
-- Reports now list the game's folder (file names and sizes, no personal paths), and every game's summary has one line about it, so an incomplete or different game package shows at once.
+- With DLSS asked for at the output's own size (DLAA: the Sharp, Classic cgbj and some Custom presets), the game ran out of its render-target memory and closed a second after starting. It was the most common crash of 0.3.25 (52 reports, 12 players). DLAA is played as DLSS quality now, from the launcher and from the game's F1 menu.
+- The launcher checks the game's folder against the complete game (its 22 archives and its data folder). The four players whose folder differed closed within seconds in every game; the Play page now says what is missing, and PLAY asks before starting.
+- The language buttons are one picker now, with Spanish added. New languages are files anyone can add (CONTRIBUTING.md). On a first start the launcher uses Windows' own language when it has it.
+- Game logs are read by edupode and the project's team (the collaborators of the repository), every read recorded. Players who said yes before are asked once more; nothing is sent until they answer. Hardware sharing stays edupode's only.

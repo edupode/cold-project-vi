@@ -63,6 +63,8 @@ du jeu n'est inclus.**
   après un composant qui n'a pas démarré sont passés en trois endroits ; journaux et rapports nomment le victory.exe lancé.
 - **0.3.25 :** le lanceur remet le victory.exe apporté par sa propre mise à jour quand un autre est en place ; les
   rapports listent le dossier du jeu (noms et tailles) et le résumé de chaque partie a une ligne à son sujet.
+- **0.3.26 :** le DLAA tourne en DLSS qualité (à la taille de l'écran le jeu manquait de mémoire de render targets et
+  se fermait au bout d'une seconde) ; un avertissement pour un dossier du jeu incomplet ; un choix de langue avec l'espagnol.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

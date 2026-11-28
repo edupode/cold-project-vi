@@ -1,4 +1,6 @@
-Julia's Launcher 0.3.25: o emulador corresponde sempre ao launcher, e os relatórios mostram a pasta do jogo.
+Julia's Launcher 0.3.26: acabou a paragem ao fim de um segundo com DLSS à escala inteira, um aviso para jogo incompleto, e um seletor de língua com espanhol.
 
-- Ao abrir, o launcher confirma que o emulador (victory.exe) é o que a sua própria atualização trouxe; se não for, põe esse no lugar. Um PC tinha o launcher 0.3.24 a correr o emulador da 0.3.21, por isso nenhuma das correções mais recentes do motor lhe chegava.
-- Os relatórios passam a listar a pasta do jogo (nomes e tamanhos dos ficheiros, sem caminhos pessoais), e o resumo de cada jogo tem uma linha sobre ela, para um pacote do jogo incompleto ou diferente se ver logo.
+- Com DLSS pedido ao tamanho do próprio ecrã (DLAA: os presets Nítido, cgbj clássico e alguns Personalizados), o jogo ficava sem a sua memória de render targets e fechava um segundo depois de arrancar. Era o crash mais comum da 0.3.25 (52 relatórios, 12 jogadores). O DLAA passa a correr como DLSS qualidade, pelo launcher e pelo menu F1 do jogo.
+- O launcher compara a pasta do jogo com o jogo completo (os 22 arquivos e a pasta data). Os quatro jogadores cuja pasta era diferente fechavam em segundos em todos os jogos; a página Jogar diz agora o que falta, e o JOGAR pergunta antes de arrancar.
+- Os botões de língua passam a ser um seletor, com espanhol. Línguas novas são ficheiros que qualquer pessoa pode acrescentar (CONTRIBUTING.md). No primeiro arranque o launcher usa a língua do Windows quando a tem.
+- As logs dos jogos são lidas pelo edupode e pela equipa do projeto (os colaboradores do repositório), e cada leitura fica registada. Quem já tinha dito que sim é perguntado mais uma vez; nada é enviado até responder. A partilha de hardware continua só do edupode.

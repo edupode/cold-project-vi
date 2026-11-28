@@ -62,6 +62,8 @@ e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
   depois de um componente não arrancar são saltadas em três sítios; logs e relatórios dizem que victory.exe arrancou.
 - **0.3.25:** o launcher repõe o victory.exe que a sua própria atualização trouxe quando está outro no lugar; os
   relatórios listam a pasta do jogo (nomes e tamanhos) e o resumo de cada jogo tem uma linha sobre ela.
+- **0.3.26:** o DLAA corre como DLSS qualidade (ao tamanho do ecrã o jogo ficava sem memória de render targets e
+  fechava ao fim de um segundo); um aviso para pasta do jogo incompleta; um seletor de língua com espanhol.
 - **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
 - **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
   `victory.exe` novo aquece e arranca de novo uma vez, sozinho.

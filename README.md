@@ -87,6 +87,8 @@ included.**
   component-start stops are stepped over at three places; logs and reports name the victory.exe that started.
 - **0.3.25:** the launcher puts back the victory.exe its own update brought when another one is in place; reports
   list the game's folder (names and sizes) and each game's summary has a line about it.
+- **0.3.26:** DLAA runs as DLSS quality (at the output's own size the game ran out of its render-target memory and
+  closed a second in); a warning for an incomplete game folder; a language picker with Spanish, translations as files.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.
