@@ -1997,10 +1997,10 @@ namespace VIctoryLauncher
             set("VICTORY_PANEL_FRAMEGEN", !smoothBox.Checked ? "OFF" : rtxFrameGen ? "SMOOTH MOTION" : NvSmoothHere ? "NVSMOOTH30"
                 : e.ContainsKey("VICTORY_FRAMEGEN") ? "DLSS FG" : e.ContainsKey("VICTORY_FSR_FRAMEGEN") ? "FSR 3" : OwnFrameGen ? "VI 2X" : "OFF");
             // The game ends with this code to be started again by the launcher (cratesictory-gpu\src\host\menu.rs,
-            // restart); the first start of a new victory.exe plays 30 seconds and asks for it (it would stay near 14 FPS).
+            // restart); the first start of a new victory.exe plays 10 seconds (as VIctory-NVIDIA has it since c1cbdc9) and asks for it (it would stay near 14 FPS).
             set("VICTORY_RESTART_EXIT", RestartExitCode.ToString());
             var mark = WarmupMark;
-            if (mark != null && !File.Exists(mark)) { set("VICTORY_WARMUP_RESTART", "30"); set("VICTORY_WARMUP_MARK", mark); }
+            if (mark != null && !File.Exists(mark)) { set("VICTORY_WARMUP_RESTART", "10"); set("VICTORY_WARMUP_MARK", mark); }
             ApplyTestEnv(e);
             return e;
         }

@@ -75,7 +75,8 @@ namespace VIctoryLauncher
                 if (!hasNvidia && !hasRadeon) gpuName = best.Name;
             }
             rtx30 = Regex.IsMatch(gpuName, @"RTX\s*30\d\d");
-            anyRtx = Regex.IsMatch(gpuName, @"RTX\s*[2-5]0\d\d");
+            // (RTX Ada, Blackwell and RTX PRO workstation cards too, as VIctory-NVIDIA counts them.)
+            anyRtx = Regex.IsMatch(gpuName, @"RTX\s*[2-5]0\d\d|RTX\s*A\d{4}|RTX\s*PRO|Ada|Blackwell", RegexOptions.IgnoreCase);
             olderRtx = Regex.IsMatch(gpuName, @"RTX\s*(20|30)\d\d");
             if (!hasNvidia && hasRadeon) gpuName = radeonName.Replace("AMD ", "");
         }
@@ -209,7 +210,9 @@ namespace VIctoryLauncher
         // `victory play` sets: VendorFrameGen): DLSS Frame Generation on an RTX (RTX 20/30 through MFG Unlocker),
         // AMD FSR 3 on any card of its own memory.
         bool DlssFgHere { get { return FgChoice == "dlss" && anyRtx && !UseAmdEngine; } }
-        bool FsrFgHere { get { return FgChoice == "fsr" && !UseAmdEngine && !integratedOnly; } }
+        // FSR 3 only with DLSS upscaling (an RTX): without it the game's own FidelityFX check stopped the game
+        // (VIctory-NVIDIA #331, #459; their c1cbdc9 makes it ready only with DLSS on).
+        bool FsrFgHere { get { return FgChoice == "fsr" && anyRtx && !UseAmdEngine && !integratedOnly; } }
 
         // The frame generation the player picked (launcher.ini fg_engine): auto (the best this card has), smooth
         // (NVIDIA Smooth Motion, RTX 40/50), nvsmooth30 (RTX 30, experimental) or vi (VIctory's own, any card,
@@ -231,9 +234,8 @@ namespace VIctoryLauncher
             if (!UseAmdEngine && anyRtx)
                 add("dlss", olderRtx ? L("DLSS Frame Generation (RTX 20/30, with MFG Unlocker)", "DLSS Frame Generation (RTX 20/30, com o MFG Unlocker)", "DLSS Frame Generation (RTX 20/30, avec MFG Unlocker)")
                                      : L("DLSS Frame Generation (RTX 40/50)", "DLSS Frame Generation (RTX 40/50)", "DLSS Frame Generation (RTX 40/50)"));
-            if (!UseAmdEngine && !integratedOnly)
-                add("fsr", anyRtx ? L("AMD FSR 3 (with DLSS upscaling)", "AMD FSR 3 (com o upscaling DLSS)", "AMD FSR 3 (avec l'upscaling DLSS)")
-                                  : L("AMD FSR 3 (1080p screen only)", "AMD FSR 3 (so com ecra 1080p)", "AMD FSR 3 (écran 1080p seulement)"));
+            if (!UseAmdEngine && !integratedOnly && anyRtx)
+                add("fsr", L("AMD FSR 3 (with DLSS upscaling)", "AMD FSR 3 (com o upscaling DLSS)", "AMD FSR 3 (avec l'upscaling DLSS)"));
             if (rtx30 && File.Exists(NvSmoothDll)) add("nvsmooth30", L("NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, expérimental)"));
             if (!UseAmdEngine && !integratedOnly) add("vi", L("VIctory 2X (any card, experimental)", "VIctory 2X (qualquer placa, experimental)", "VIctory 2X (toute carte, expérimental)"));
             var i = fgKeys.IndexOf(FgChoice);
@@ -346,10 +348,9 @@ namespace VIctoryLauncher
             get { return File.Exists(Path.Combine(FidelityFxDir, "amd_fidelityfx_loader_dx12.dll")) && File.Exists(Path.Combine(FidelityFxDir, "amd_fidelityfx_framegeneration_dx12.dll")); }
         }
 
-        // DLSS upscales for both: DLSS Frame Generation reads its inputs, and FSR 3 needs an upscaling made for the
-        // screen's size (the game's own FidelityFX only makes 1080p). Without an RTX, FSR 3 runs at a 1080p screen only.
+        // DLSS upscales for both: DLSS Frame Generation reads its inputs, and FSR 3 needs it (FsrFgHere).
         bool VendorUpscaling { get { return anyRtx && (DlssFgHere || FsrFgHere); } }
-        bool FsrBlocked { get { return FsrFgHere && !anyRtx && DisplayHeight != 1080; } }
+        bool FsrBlocked { get { return false; } }
 
         // Asked once when DLSS Frame Generation or FSR 3 is picked: what is downloaded, from where, and (RTX 20/30)
         // MFG Unlocker, someone else's mod. false: the player said no, the choice goes back.
@@ -378,8 +379,7 @@ namespace VIctoryLauncher
                 lines.Add(L("AMD FSR 3 frame generation (from the VIctory-NVIDIA fork): a frame made between each two of the game's (2X).",
                             "Geracao de frames AMD FSR 3 (do fork VIctory-NVIDIA): um frame criado entre cada dois do jogo (2X).",
                             "Génération d'images AMD FSR 3 (du fork VIctory-NVIDIA) : une image créée entre chaque deux du jeu (2X)."));
-                lines.Add(anyRtx ? L("On this RTX, DLSS does the upscaling FSR 3 reads.", "Nesta RTX, o DLSS faz o upscaling que o FSR 3 le.", "Sur cette RTX, DLSS fait l'upscaling que FSR 3 lit.")
-                                 : L("Without an RTX, it needs the 1080p screen size (Play page): the game's own upscaling makes only that.", "Sem uma RTX, precisa do ecra a 1080p (pagina Jogar): o upscaling do proprio jogo so faz esse.", "Sans RTX, il faut l'écran en 1080p (page Jouer) : l'upscaling du jeu ne fait que celui-là."));
+                lines.Add(L("DLSS does the upscaling FSR 3 reads (an RTX is needed: without DLSS the game stops).", "O DLSS faz o upscaling que o FSR 3 le (e preciso uma RTX: sem DLSS o jogo para).", "DLSS fait l'upscaling que FSR 3 lit (une RTX est nécessaire : sans DLSS le jeu s'arrête)."));
             }
             lines.Add("");
             lines.Add(L("At PLAY, what is missing is downloaded once into " + VictoryHome + ":", "No JOGAR, o que faltar e descarregado uma vez para " + VictoryHome + ":", "Au JOUER, ce qui manque est téléchargé une fois dans " + VictoryHome + " :"));

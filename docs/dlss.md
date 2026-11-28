@@ -73,8 +73,8 @@ generation (VIctory 2X, `crates/victory-gpu/src/framegen.rs`, any card) is
 
 **From Julia's Launcher.** The launcher starts `victory run`, not `play`. Its
 frame generation box offers "DLSS Frame Generation" (RTX 40/50; RTX 20/30 with
-MFG Unlocker) and "AMD FSR 3" (with DLSS upscaling on an RTX, else at a 1080p
-screen only). At PLAY it runs `victory get-dlss`, `get-fsr` and `get-mfg` for
+MFG Unlocker) and "AMD FSR 3" (RTX only: it needs DLSS upscaling, without which
+the title's own FidelityFX check stops the game). At PLAY it runs `victory get-dlss`, `get-fsr` and `get-mfg` for
 what is missing, then sets what `play` sets (`launcher/Hardware.cs`,
 `VendorFrameGen`): the preset's own upscaler and render scale give way to the
 title's FidelityFX path at the nearest `VICTORY_DLSS_MODE`, and `run` loads MFG
