@@ -16,6 +16,8 @@ namespace VIctoryLauncher
         public string Scale = "0.6666667";
         public int TextureMax = 2048, CardBuffersMb = 1536, RipeBlocks = 4, StageMb = 384, Fps = 60;
         public bool Guards, LevelsOnDemand;
+        // The game's own quality settings (VIctory-Hydra's switches, victory_loader::engine): "0" leaves the game's.
+        public string Shadows = "0", Lod = "0", Cull = "0", Volumetric = "0";
 
         // What each value may be (the page's choices); a code with anything else is refused.
         public static readonly string[] Scales = { "1.0", "0.75", "0.6666667", "0.5", "0.4" };
@@ -24,12 +26,23 @@ namespace VIctoryLauncher
         public static readonly int[] Ripes = { 2, 4 };
         public static readonly int[] Stages = { 64, 128, 384 };
         public static readonly int[] Fpses = { 30, 60 };
+        public static readonly string[] ShadowSizes = { "0", "1", "2" };      // the game's, 1280 px, 1024 px
+        public static readonly string[] Lods = { "0", "0.35", "0.25" };       // the game's, nearer, nearest
+        public static readonly string[] Culls = { "0", "2", "3" };            // the game's, fewer, far fewer small objects
+        public static readonly string[] Volumetrics = { "0", "1" };           // the game's, 128 px
 
         public CustomProfile Copy() { return (CustomProfile)MemberwiseClone(); }
 
         public string Text()
         {
-            return string.Format("s={0};t={1};b={2};r={3};g={4};f={5};m={6};l={7}", Scale, TextureMax, CardBuffersMb, RipeBlocks, StageMb, Fps, Guards ? 1 : 0, LevelsOnDemand ? 1 : 0);
+            var text = string.Format("s={0};t={1};b={2};r={3};g={4};f={5};m={6};l={7}", Scale, TextureMax, CardBuffersMb, RipeBlocks, StageMb, Fps, Guards ? 1 : 0, LevelsOnDemand ? 1 : 0);
+            // The game's settings only when changed: a code that leaves them is the same as before 0.3.27, which
+            // older launchers still read.
+            if (Shadows != "0") text += ";sh=" + Shadows;
+            if (Lod != "0") text += ";lo=" + Lod;
+            if (Cull != "0") text += ";cu=" + Cull;
+            if (Volumetric != "0") text += ";vo=" + Volumetric;
+            return text;
         }
 
         static string Check(string body)
@@ -85,6 +98,10 @@ namespace VIctoryLauncher
                     case "f": if (!num || !Fpses.Contains(n)) { why = "unknown FPS clock"; return null; } p.Fps = n; break;
                     case "m": p.Guards = kv[1] == "1"; break;
                     case "l": p.LevelsOnDemand = kv[1] == "1"; break;
+                    case "sh": if (!ShadowSizes.Contains(kv[1])) { why = "unknown shadow size"; return null; } p.Shadows = kv[1]; break;
+                    case "lo": if (!Lods.Contains(kv[1])) { why = "unknown detail distance"; return null; } p.Lod = kv[1]; break;
+                    case "cu": if (!Culls.Contains(kv[1])) { why = "unknown value"; return null; } p.Cull = kv[1]; break;
+                    case "vo": if (!Volumetrics.Contains(kv[1])) { why = "unknown value"; return null; } p.Volumetric = kv[1]; break;
                     default: why = "unknown setting " + kv[0]; return null;
                 }
             }
@@ -95,7 +112,7 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         CustomProfile custom = new CustomProfile();
-        ComboBox cScale, cTex, cBuf, cRipe, cStage, cFps;
+        ComboBox cScale, cTex, cBuf, cRipe, cStage, cFps, cShadows, cLod, cCull, cVol;
         CheckBox cGuards, cLevels;
         TextBox pasteBox, codeBox;
         bool fillingCustom;
@@ -130,6 +147,17 @@ namespace VIctoryLauncher
             if (p.Guards) { e.Remove("VICTORY_PRESSURE_FREE_MB"); e.Remove("VICTORY_PRESSURE_CLEAR_MB"); e.Remove("VICTORY_TEXTURE_RAM_GUARD"); }
             e["VICTORY_LEVELS_ON_DEMAND"] = p.LevelsOnDemand ? "1" : "0";
             if (p.CardBuffersMb <= 768) e.Remove("VICTORY_WINDOWS_BAR_MB");
+            GameQuality(e, p.Shadows, p.Lod, p.Cull, p.Volumetric);
+        }
+
+        // The game's own quality settings (victory_loader::engine, from VIctory-Hydra): "0" leaves the game's.
+        static void GameQuality(Dictionary<string, string> e, string shadows, string lod, string cull, string volumetric)
+        {
+            Action<string, string> put = (k, v) => { if (v == "0") e.Remove(k); else e[k] = v; };
+            put("VICTORY_LOW_SHADOWS", shadows);
+            put("VICTORY_LOD_SCALE", lod);
+            put("VICTORY_SMALL_CULL", cull);
+            put("VICTORY_LOW_VOLUMETRIC", volumetric);
         }
 
         Panel CustomPage()
@@ -171,6 +199,15 @@ namespace VIctoryLauncher
             cRipe = row(L("Texture blocks at once", "Blocos de texturas de cada vez", "Blocs de textures à la fois"), L("2: less memory, 4: faster", "2: menos memoria, 4: mais rapido", "2 : moins de mémoire, 4 : plus rapide"), new object[] { "2", "4" });
             cStage = row(L("Texture batch size", "Tamanho do lote de texturas", "Taille du lot de textures"), L("smaller: less RAM", "menor: menos RAM", "plus petit : moins de RAM"), new object[] { "64 MB", "128 MB", "384 MB" });
             cFps = row(L("FPS clock", "Relogio de FPS", "Horloge FPS"), L("60 lets the game pass 30 FPS", "60 deixa o jogo passar dos 30 FPS", "60 laisse le jeu dépasser 30 FPS"), new object[] { "30", "60" });
+            var stock = L("The game's", "Os do jogo", "Ceux du jeu");
+            cShadows = row(L("Shadow size", "Tamanho das sombras", "Taille des ombres"), L("smaller: more FPS, softer shadows", "menor: mais FPS, sombras mais suaves", "plus petit : plus de FPS, ombres plus douces"),
+                new object[] { stock, "1280 px", "1024 px" });
+            cLod = row(L("Detail distance", "Distancia do detalhe", "Distance des détails"), L("nearer: more FPS, less detail far away", "mais perto: mais FPS, menos detalhe ao longe", "plus près : plus de FPS, moins de détails au loin"),
+                new object[] { stock, L("Nearer", "Mais perto", "Plus près"), L("Nearest", "O mais perto", "Au plus près") });
+            cCull = row(L("Small objects far away", "Objetos pequenos ao longe", "Petits objets au loin"), L("fewer: more FPS, emptier distance", "menos: mais FPS, distancia mais vazia", "moins : plus de FPS, lointain plus vide"),
+                new object[] { stock, L("Fewer", "Menos", "Moins"), L("Far fewer", "Muito menos", "Beaucoup moins") });
+            cVol = row(L("Light in the air", "Luz no ar", "Lumière dans l'air"), L("low: more FPS, coarser haze and reflections", "baixa: mais FPS, neblina e reflexos mais grosseiros", "basse : plus de FPS, brume et reflets plus grossiers"),
+                new object[] { stock, L("Low", "Baixa", "Basse") });
             values.Height = vy + 10;
             page.Controls.Add(values);
             y += values.Height + 14;
@@ -246,8 +283,8 @@ namespace VIctoryLauncher
             var m = modes[k];
             p.Scale = m.Scale ?? "1.0";
             p.Fps = m.UltraLow ? 30 : 60;
-            if (m.UltraLow) { p.TextureMax = 512; p.CardBuffersMb = 512; p.RipeBlocks = 2; p.StageMb = 64; p.Guards = true; p.LevelsOnDemand = true; }
-            else if (m.Modest) { p.TextureMax = 1024; p.CardBuffersMb = 768; p.RipeBlocks = 2; p.StageMb = 128; p.Guards = true; p.LevelsOnDemand = false; }
+            if (m.UltraLow) { p.TextureMax = 512; p.CardBuffersMb = 512; p.RipeBlocks = 2; p.StageMb = 64; p.Guards = true; p.LevelsOnDemand = true; p.Shadows = UltraLowShadows; p.Lod = UltraLowLod; p.Cull = UltraLowCull; }
+            else if (m.Modest) { p.TextureMax = 1024; p.CardBuffersMb = 768; p.RipeBlocks = 2; p.StageMb = 128; p.Guards = true; p.LevelsOnDemand = false; p.Shadows = ModestShadows; }
             else { p.TextureMax = 2048; p.CardBuffersMb = 1536; p.RipeBlocks = 4; p.StageMb = 384; p.Guards = ramGb > 0 && ramGb < 24; p.LevelsOnDemand = false; }
             return p;
         }
@@ -264,6 +301,10 @@ namespace VIctoryLauncher
             cFps.SelectedIndex = Math.Max(0, Array.IndexOf(CustomProfile.Fpses, custom.Fps));
             cGuards.Checked = custom.Guards;
             cLevels.Checked = custom.LevelsOnDemand;
+            cShadows.SelectedIndex = Math.Max(0, Array.IndexOf(CustomProfile.ShadowSizes, custom.Shadows));
+            cLod.SelectedIndex = Math.Max(0, Array.IndexOf(CustomProfile.Lods, custom.Lod));
+            cCull.SelectedIndex = Math.Max(0, Array.IndexOf(CustomProfile.Culls, custom.Cull));
+            cVol.SelectedIndex = Math.Max(0, Array.IndexOf(CustomProfile.Volumetrics, custom.Volumetric));
             codeBox.Text = custom.Code();
             fillingCustom = false;
         }
@@ -279,6 +320,10 @@ namespace VIctoryLauncher
             custom.Fps = CustomProfile.Fpses[Math.Max(0, cFps.SelectedIndex)];
             custom.Guards = cGuards.Checked;
             custom.LevelsOnDemand = cLevels.Checked;
+            custom.Shadows = CustomProfile.ShadowSizes[Math.Max(0, cShadows.SelectedIndex)];
+            custom.Lod = CustomProfile.Lods[Math.Max(0, cLod.SelectedIndex)];
+            custom.Cull = CustomProfile.Culls[Math.Max(0, cCull.SelectedIndex)];
+            custom.Volumetric = CustomProfile.Volumetrics[Math.Max(0, cVol.SelectedIndex)];
             codeBox.Text = custom.Code();
             SaveCustom();
             Refresh2();
@@ -300,6 +345,11 @@ namespace VIctoryLauncher
             diff(L("FPS clock", "Relogio de FPS"), custom.Fps.ToString(), p.Fps.ToString());
             diff(L("Memory guards", "Protecoes de memoria"), custom.Guards ? "on" : "off", p.Guards ? "on" : "off");
             diff(L("Texture levels on demand", "Niveis de texturas a pedido"), custom.LevelsOnDemand ? "on" : "off", p.LevelsOnDemand ? "on" : "off");
+            Func<string, string> game = v => v == "0" ? "-" : v;
+            diff(L("Shadow size", "Tamanho das sombras", "Taille des ombres"), game(custom.Shadows), game(p.Shadows));
+            diff(L("Detail distance", "Distancia do detalhe", "Distance des détails"), game(custom.Lod), game(p.Lod));
+            diff(L("Small objects far away", "Objetos pequenos ao longe", "Petits objets au loin"), game(custom.Cull), game(p.Cull));
+            diff(L("Light in the air", "Luz no ar", "Lumière dans l'air"), game(custom.Volumetric), game(p.Volumetric));
             if (changes.Count == 0) { MessageBox.Show(this, L("This profile is the same as yours.", "Este perfil e igual ao teu."), "Julia's Launcher"); return; }
             var ask = L("This code changes:\r\n\r\n", "Este codigo muda:\r\n\r\n") + string.Join("\r\n", changes.ToArray()) + L("\r\n\r\nApply it and play with Custom?", "\r\n\r\nAplicar e jogar com Personalizado?");
             if (MessageBox.Show(this, ask, "Julia's Launcher", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;

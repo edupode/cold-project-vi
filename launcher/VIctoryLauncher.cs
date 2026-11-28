@@ -142,7 +142,7 @@ namespace VIctoryLauncher
         Heading presetHeading, gameHeading;
         readonly List<ModeCard> cards = new List<ModeCard>();
         int modeIndex = -1;
-        CheckBox panelBox, borderlessBox, fps60Box, reserveBox, smoothBox, qualityBox, facesBox, loadingBox, fightsBox, warmBox, cpuBox;
+        CheckBox panelBox, borderlessBox, fps60Box, reserveBox, smoothBox, qualityBox, facesBox, loadingBox, fightsBox, warmBox, cpuBox, lighterBox;
         LoadBar loadBar;
         TextBox logBox;
         Pill playButton, prepareButton, buildButton, closeButton;
@@ -170,6 +170,10 @@ namespace VIctoryLauncher
         // The order the preset cards show the modes in (modes keep their numbers in launcher.ini).
         static readonly int[] CardOrder = { 0, 1, 2, 5, 3, 4, 6 };
         const int ModeUltraLow = 5, ModeCustom = 6;
+        // The weak presets' game quality settings (Custom.cs, GameQuality): shadows 1280 px ("1"), the detail
+        // distance 0.35 of the game's range and fewer small objects far away (2.0) on Ultra Low; shadows only on
+        // Modest PC.
+        const string UltraLowShadows = "1", UltraLowLod = "0.35", UltraLowCull = "2", ModestShadows = "1";
 
         public const string DiscordInvite = "https://discord.gg/648WEXCAsZ";
         public const string DiscordChannel = "Send bugs here please";
@@ -194,7 +198,7 @@ namespace VIctoryLauncher
             if (cacheDir == null || (!cacheDir.All(c => c < 128) && cacheDir == Path.Combine(dataRoot, "cache"))) cacheDir = DefaultCacheDir();
             dataDir = ReadSetting("data") ?? Path.Combine(dataRoot, "data");
             modes = new Mode[] {
-                new Mode(L("Recommended", "Recomendado"), "720p → 1080p", L("Balanced · edupode", "Equilibrado · edupode"),
+                new Mode(L("Beefy PC mode", "Beefy PC mode", "Beefy PC mode"), "720p → 1080p", L("Balanced · edupode", "Equilibrado · edupode"),
                     L("The world drawn at 1280x720 and rebuilt to 1080p by the game's own upscaler, texture levels held (video memory under budget), 60 FPS clock. About 22-26 FPS in the open world and 35+ in cutscenes on an RTX 5070 Ti laptop (6-8 GB of video memory, ~20 GB of RAM).",
                       "O mundo desenhado a 1280x720 e reconstruido para 1080p pelo upscaler do proprio jogo, niveis de texturas guardados (VRAM dentro do limite), relogio de 60 FPS. Cerca de 22-26 FPS no mundo aberto e 35+ nas cutscenes num portatil RTX 5070 Ti (6-8 GB de VRAM, ~20 GB de RAM)."),
                     "0.6666667", true, false),
@@ -747,8 +751,8 @@ namespace VIctoryLauncher
             outputBox.SelectedIndex = 0;
             outputBox.SelectedIndexChanged += (s, e) => { SaveSettings(); Refresh2(); };
             new ToolTip { AutoPopDelay = 20000 }.SetToolTip(outputBox, L(
-                "The resolution the game draws its picture for; the preset's scale applies on top (Recommended at 4K draws 2560x1440 and upscales). Higher output: a sharper picture, more video memory for the screen's images (about +0.5 GB at 2K, +1.5 GB at 4K) and more work for the card; the CPU stays the limit on strong cards. 2K and 4K are new: tell us on Discord how they run.",
-                "A resolucao para a qual o jogo desenha a imagem; a escala do preset aplica-se por cima (o Recomendado em 4K desenha 2560x1440 e amplia). Saida maior: imagem mais nitida, mais VRAM para as imagens do ecra (cerca de +0,5 GB em 2K, +1,5 GB em 4K) e mais trabalho para a placa; em placas fortes o limite continua a ser o processador. 2K e 4K sao novos: conta-nos no Discord como correm."));
+                "The resolution the game draws its picture for; the preset's scale applies on top (Beefy PC mode at 4K draws 2560x1440 and upscales). Higher output: a sharper picture, more video memory for the screen's images (about +0.5 GB at 2K, +1.5 GB at 4K) and more work for the card; the CPU stays the limit on strong cards. 2K and 4K are new: tell us on Discord how they run.",
+                "A resolucao para a qual o jogo desenha a imagem; a escala do preset aplica-se por cima (o Beefy PC mode em 4K desenha 2560x1440 e amplia). Saida maior: imagem mais nitida, mais VRAM para as imagens do ecra (cerca de +0,5 GB em 2K, +1,5 GB em 4K) e mais trabalho para a placa; em placas fortes o limite continua a ser o processador. 2K e 4K sao novos: conta-nos no Discord como correm."));
             page.Controls.Add(outputBox);
             y += 42;
             for (int i = 0; i < CardOrder.Length; i++)
@@ -807,6 +811,10 @@ namespace VIctoryLauncher
             qualityBox.Visible = false;
             facesBox = T(L("◇ Rainbow-face fix", "◇ Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 2, 0, false);
             loadingBox = T(L("◇ Fast loading", "◇ Carregamento rapido"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 2, 1, false);
+            // The game's own detail settings lighter (victory_loader::engine, from VIctory-Hydra) on any preset: the
+            // weak presets have them already.
+            lighterBox = T(L("◇ Lighter game detail", "◇ Detalhe do jogo mais leve", "◇ Détails du jeu plus légers"),
+                L("More FPS: smaller shadows, less detail far away", "Mais FPS: sombras menores, menos detalhe ao longe", "Plus de FPS : ombres plus petites, moins de détails au loin"), 2, 2, false);
             y += 4 * 70 + 14;
             // Which frame generation, when the switch above is on.
             page.Controls.Add(new Label { Text = L("Frame generation engine", "Motor de geracao de frames", "Moteur de génération d'images"), Location = new Point(X, y + 6), AutoSize = true, ForeColor = Theme.Soft, BackColor = Theme.Back, Font = Theme.Ui(9.5f) });
@@ -889,6 +897,9 @@ namespace VIctoryLauncher
                           "★ Testado no PC do edupode: +1 FPS no mundo aberto (21,6 contra 20,5) e menos 2,3 ms a preparar cada frame. O limite e o processador (a placa espera ~0 ms por frame): 6 ajudantes refrescavam os buffers e as texturas do jogo (~18 ms de um frame de 44 ms); isto da-lhes metade dos teus nucleos (ate 12) e pergunta ao Windows que paginas mudaram numa thread a parte.");
             d[warmBox] = L("New: before the game starts, a loading bar makes every pipeline earlier sessions drew with, in separate processes, so the driver has them ready: no stutter the first time you see a place. Takes seconds once the cache is ready; after a VIctory or driver update it takes longer, once.",
                            "Novo: antes de o jogo arrancar, uma barra de carregamento prepara todas as pipelines usadas nas sessoes anteriores, em processos a parte, para o driver ja as ter: sem engasgos a primeira vez que ves um sitio. Demora segundos com a cache pronta; depois de atualizar o VIctory ou o driver demora mais, uma vez.");
+            d[lighterBox] = L("Experimental: the game's own settings made lighter before it starts (from VIctory-Hydra): shadows at 1280 px instead of 2048, objects switch to their simpler versions nearer, and fewer small objects far away. More FPS for a little less detail in the distance. Ultra Low and Modest PC have it already; the weak presets ignore this box.",
+                "Experimental: as definicoes do proprio jogo mais leves antes de arrancar (do VIctory-Hydra): sombras a 1280 px em vez de 2048, os objetos passam a versoes mais simples mais perto, e menos objetos pequenos ao longe. Mais FPS por um pouco menos de detalhe a distancia. O Ultra baixo e o PC modesto ja o tem; os presets fracos ignoram esta caixa.",
+                "Expérimental : les réglages du jeu lui-même allégés avant son démarrage (de VIctory-Hydra) : ombres en 1280 px au lieu de 2048, les objets passent plus tôt à leurs versions simples, et moins de petits objets au loin. Plus de FPS pour un peu moins de détails au loin. Ultra bas et PC modeste l'ont déjà ; les préréglages légers ignorent cette case.");
             d[loadingBox] = L("Experimental: textures the game builds on the CPU no longer wait for the game's memory to settle. Shorter loading pauses; untested.",
                               "Experimental: as texturas que o jogo prepara no processador deixam de esperar que a memoria assente. Pausas de carregamento mais curtas; nao testado.");
             return d;
@@ -901,10 +912,10 @@ namespace VIctoryLauncher
             SelectMode(0);
             panelBox.Checked = true; borderlessBox.Checked = true; fps60Box.Checked = true; reserveBox.Checked = true;
             smoothBox.Checked = rtxFrameGen;
-            fightsBox.Checked = !integratedOnly && vramGb >= 11; cpuBox.Checked = true; qualityBox.Checked = false; facesBox.Checked = false; loadingBox.Checked = false; warmBox.Checked = true;
-            if (say) Log(L("Recommended setup (= the TUDO + lutas shortcut): Recommended 720p, overlay, borderless, 60 FPS clock, 2 GB of buffers for crowds, video memory reserve" + (rtxFrameGen ? ", Smooth Motion." : "."),
-                  "Configuracao recomendada (= atalho TUDO + lutas): Recomendado 720p, overlay, sem bordas, relogio de 60 FPS, 2 GB de buffers para multidoes, reserva de VRAM" + (rtxFrameGen ? ", Smooth Motion." : "."),
-                  "Réglages recommandés (= raccourci TUDO + lutas) : Recommandé 720p, overlay, sans bordure, horloge à 60 FPS, 2 Go de buffers pour les foules, réserve de VRAM" + (rtxFrameGen ? ", Smooth Motion." : ".")));
+            fightsBox.Checked = !integratedOnly && vramGb >= 11; cpuBox.Checked = true; qualityBox.Checked = false; facesBox.Checked = false; loadingBox.Checked = false; lighterBox.Checked = false; warmBox.Checked = true;
+            if (say) Log(L("Recommended setup (= the TUDO + lutas shortcut): Beefy PC mode 720p, overlay, borderless, 60 FPS clock, 2 GB of buffers for crowds, video memory reserve" + (rtxFrameGen ? ", Smooth Motion." : "."),
+                  "Configuracao recomendada (= atalho TUDO + lutas): Beefy PC mode 720p, overlay, sem bordas, relogio de 60 FPS, 2 GB de buffers para multidoes, reserva de VRAM" + (rtxFrameGen ? ", Smooth Motion." : "."),
+                  "Réglages recommandés (= raccourci TUDO + lutas) : Beefy PC mode 720p, overlay, sans bordure, horloge à 60 FPS, 2 Go de buffers pour les foules, réserve de VRAM" + (rtxFrameGen ? ", Smooth Motion." : ".")));
             // Integrated graphics: the lightest setup, nothing that costs memory it does not have.
             if (integratedOnly) { SelectMode(ModeUltraLow); fps60Box.Checked = false; smoothBox.Checked = false; fightsBox.Checked = false; }
         }
@@ -1361,7 +1372,7 @@ namespace VIctoryLauncher
         {
             return Pt ? new[] {
                 "JOGAR",
-                "   •  Predefinicoes: Recomendado (720p), Mais rapido e PC modesto (540p), Ultra baixo (PCs com muito pouca memoria), Nitido e",
+                "   •  Predefinicoes: Beefy PC mode (720p), Mais rapido e PC modesto (540p), Ultra baixo (PCs com muito pouca memoria), Nitido e",
                 "      cgbj classico (1080p), Personalizado (os teus valores). O launcher escolhe uma pelo teu hardware na primeira vez.",
                 "   •  Opcoes de arranque: passa o rato por cada uma para ver o que faz. A ★ marca o que foi testado.",
                 "   •  JOGAR prepara as pipelines, abre o jogo e, quando fecha, guarda as pipelines desta sessao para a proxima.",
@@ -1410,7 +1421,7 @@ namespace VIctoryLauncher
                 "   •  Alt ou F1 solta o rato. A pagina Controlos tem o resto.",
             } : Fr ? new[] {
                 "JOUER",
-                "   •  Préréglages : Recommandé (720p), Le plus rapide et PC modeste (540p), Ultra bas (PC avec très peu de mémoire), Net et",
+                "   •  Préréglages : Beefy PC mode (720p), Le plus rapide et PC modeste (540p), Ultra bas (PC avec très peu de mémoire), Net et",
                 "      cgbj classique (1080p), Personnalisé (tes valeurs). Le launcher en choisit un selon ton matériel la première fois.",
                 "   •  Options de lancement : survole chacune pour voir ce qu'elle fait. ★ marque ce qui a été testé.",
                 "   •  JOUER charge les pipelines, lance le jeu et, à sa fermeture, garde les pipelines de cette session pour la prochaine.",
@@ -1459,7 +1470,7 @@ namespace VIctoryLauncher
                 "   •  Alt ou F1 libère la souris. La page Commandes a le reste.",
             } : new[] {
                 "PLAY",
-                "   •  Presets: Recommended (720p), Fastest and Modest PC (540p), Ultra Low (PCs with very little memory), Sharp and",
+                "   •  Presets: Beefy PC mode (720p), Fastest and Modest PC (540p), Ultra Low (PCs with very little memory), Sharp and",
                 "      Classic cgbj (1080p), Custom (your values). The launcher picks one from your hardware the first time.",
                 "   •  Launch options: point at each to see what it does. ★ marks what was tested.",
                 "   •  PLAY loads the pipelines, starts the game and, when it closes, keeps this session's pipelines for the next one.",
@@ -2057,6 +2068,11 @@ namespace VIctoryLauncher
                 e.Remove("VICTORY_PRESSURE_CLEAR_MB");
                 e.Remove("VICTORY_TEXTURE_RAM_GUARD");
             }
+            // The game's own quality settings (victory_loader::engine, from VIctory-Hydra) on the weak presets only:
+            // a little less detail far away for frames. Recommended, Sharp and Classic cgbj keep the game's.
+            if (lighterBox.Checked && !m.Modest && !m.UltraLow && !m.Custom) GameQuality(e, "1", "0.35", "2", "0");
+            if (m.Modest) GameQuality(e, ModestShadows, "0", "0", "0");
+            if (m.UltraLow) GameQuality(e, UltraLowShadows, UltraLowLod, UltraLowCull, "0");
             if (m.UltraLow)
             {
                 // The least memory: 4-6 GB cards and 8-16 GB of RAM.
@@ -2551,6 +2567,7 @@ namespace VIctoryLauncher
                         case "quality": qualityBox.Checked = false; break;
                         case "faces": facesBox.Checked = v == "1"; break;
                         case "loading": loadingBox.Checked = v == "1"; break;
+                        case "lighter": lighterBox.Checked = v == "1"; break;
                         case "fights": fightsBox.Checked = v == "1"; break;
                         case "warm": warmBox.Checked = v == "1"; break;
                         case "cpu": cpuBox.Checked = v == "1"; break;
@@ -2571,7 +2588,7 @@ namespace VIctoryLauncher
                     "lang=" + Lang, "cache=" + cacheDir, "data=" + dataDir,
                     "game=" + gameBox.Text.Trim(), "exe=" + (exeChoice ?? ""), "mode=" + modeIndex,
                     "panel=" + b(panelBox), "borderless=" + b(borderlessBox), "fps60=" + b(fps60Box), "reserve=" + b(reserveBox),
-                    "smooth=" + b(smoothBox), "quality=" + b(qualityBox), "faces=" + b(facesBox), "loading=" + b(loadingBox), "fights=" + b(fightsBox), "warm=" + b(warmBox), "cpu=" + b(cpuBox), "output=" + (outputBox == null ? 0 : outputBox.SelectedIndex),
+                    "smooth=" + b(smoothBox), "quality=" + b(qualityBox), "faces=" + b(facesBox), "loading=" + b(loadingBox), "lighter=" + b(lighterBox), "fights=" + b(fightsBox), "warm=" + b(warmBox), "cpu=" + b(cpuBox), "output=" + (outputBox == null ? 0 : outputBox.SelectedIndex),
                 };
                 // The other keys (shaders=, engine=, custom=, source=...) are kept: this used to drop them.
                 var keys = new HashSet<string>(mine.Select(l => l.Substring(0, l.IndexOf('=') + 1)));

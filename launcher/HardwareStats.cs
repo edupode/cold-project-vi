@@ -293,9 +293,9 @@ namespace VIctoryLauncher
                 L("Graphics: NVIDIA GeForce RTX 5070 Ti Laptop GPU, 12 GB, Resizable BAR on", "Grafica:  NVIDIA GeForce RTX 5070 Ti Laptop GPU, 12 GB, Resizable BAR ligado", "Graphique : NVIDIA GeForce RTX 5070 Ti Laptop GPU, 12 Go, Resizable BAR activé"),
                 L("CPU:      Intel Core Ultra 9 275HX (24 cores)", "CPU:      Intel Core Ultra 9 275HX (24 nucleos)", "CPU :      Intel Core Ultra 9 275HX (24 cœurs)"),
                 L("Memory:   32 GB RAM, 1 TB NVMe SSD, Windows 11", "Memoria:  32 GB de RAM, SSD NVMe de 1 TB, Windows 11", "Mémoire :  32 Go de RAM, SSD NVMe de 1 To, Windows 11"),
-                L("Recommended (720p → 1080p): about 22-26 FPS in the open world, 35+ in cutscenes, 6-8 GB of video memory, ~20 GB of RAM.",
-                  "Recomendado (720p → 1080p): cerca de 22-26 FPS no mundo aberto, 35+ nas cutscenes, 6-8 GB de VRAM, ~20 GB de RAM.",
-                  "Recommandé (720p → 1080p) : environ 22-26 FPS en monde ouvert, 35+ en cinématiques, 6-8 Go de VRAM, ~20 Go de RAM."),
+                L("Beefy PC mode (720p → 1080p): about 22-26 FPS in the open world, 35+ in cutscenes, 6-8 GB of video memory, ~20 GB of RAM.",
+                  "Beefy PC mode (720p → 1080p): cerca de 22-26 FPS no mundo aberto, 35+ nas cutscenes, 6-8 GB de VRAM, ~20 GB de RAM.",
+                  "Beefy PC mode (720p → 1080p) : environ 22-26 FPS en monde ouvert, 35+ en cinématiques, 6-8 Go de VRAM, ~20 Go de RAM."),
             };
             var card = new InfoCard { Location = new Point(X, y), Size = new Size(W, 200), Text = string.Join("\r\n", lines) };
             card.Height = card.Fit();

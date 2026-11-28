@@ -40,6 +40,8 @@ def load(code):
 
 
 def main(argv):
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # the Windows console's code page cannot print every text
     if len(argv) >= 2 and argv[0] == "missing":
         texts = load(argv[1])
         for en in english():
