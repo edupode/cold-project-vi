@@ -27,7 +27,9 @@ mod crash;
 // LOCAL (victory-perf, via our wt5): VICTORY_RENDER_SCALE / VICTORY_OWN_UPSCALER / VICTORY_NO_WATCHDOG title patches.
 #[cfg(windows)]
 mod hooks;
+pub mod engine;
 pub mod frame_rate;
+pub mod patch;
 pub mod prepare;
 pub(crate) mod publish;
 pub mod resolve;
