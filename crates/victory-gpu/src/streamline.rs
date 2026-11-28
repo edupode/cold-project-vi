@@ -106,6 +106,20 @@ impl Asked {
             None if (framegen || fsr_framegen) && !on("VICTORY_DLSS") => Mode::Dlaa,
             None => Mode::Quality,
         };
+        // DLAA is taken as quality for now. At the output's own size the title's FidelityFX path asks
+        // its render-target heap for more than it holds (8.5 MB at 1080p on Series S, more at 4K on
+        // Series X) and stops on that allocator's out-of-memory check (0x80000003 at +0x2219650, the
+        // second after its upscaler is made): every one of 51 such stops in 0.3.25's reports had
+        // VICTORY_DLSS_MODE=dlaa, and the same stop was made here on an RTX 5070 Ti with both
+        // consoles. Running it natively needs that heap made larger first.
+        let mode = if mode == Mode::Dlaa {
+            tracing::warn!(
+                "DLAA is played as DLSS quality (2/3 of the output): at the output's own size the title runs out of its render-target heap and stops at +0x2219650"
+            );
+            Mode::Quality
+        } else {
+            mode
+        };
         let preset = match var("VICTORY_DLSS_PRESET") {
             Some(name) => plan::preset(&name)
                 .ok_or_else(|| format!("VICTORY_DLSS_PRESET={name}: not one of default, e, f, j, k, l, m"))?,

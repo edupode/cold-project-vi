@@ -279,18 +279,22 @@ extern "C" fn ffxConfigure(context: *mut *mut c_void, desc: *mut Header) -> u32 
 
 extern "C" fn ffxQuery(context: *mut *mut c_void, desc: *mut Header) -> u32 {
     let Some(query) = original(3) else { return PARAMETER };
-    if !desc.is_null() {
+    let kind = if desc.is_null() { 0 } else {
         // SAFETY: the title passes a description.
-        let kind = unsafe { (*desc).kind };
-        static SEEN: Mutex<Vec<u64>> = Mutex::new(Vec::new());
-        let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
-        if !seen.contains(&kind) && seen.len() < 32 {
-            seen.push(kind);
-            tracing::info!(kind = format_args!("{kind:#x}"), "FidelityFX: the title asks a query of this kind (answered by its own DLL)");
-        }
-    }
+        unsafe { (*desc).kind }
+    };
     // SAFETY: the title's own function, with its arguments.
-    unsafe { std::mem::transmute::<*const (), Call>(query)(context, desc) }
+    let code = unsafe { std::mem::transmute::<*const (), Call>(query)(context, desc) };
+    static SEEN: Mutex<Vec<(u64, u32)>> = Mutex::new(Vec::new());
+    let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    if !desc.is_null() && !seen.contains(&(kind, code)) && seen.len() < 32 {
+        seen.push((kind, code));
+        // SAFETY: the description's first words, read for the log only (every query description is
+        // larger than its header and two words).
+        let words = unsafe { std::slice::from_raw_parts(desc.cast::<u32>().add(4), 4) };
+        tracing::info!(kind = format_args!("{kind:#x}"), code, words = ?words, "FidelityFX: the title asks a query of this kind (answered by its own DLL)");
+    }
+    code
 }
 
 extern "C" fn ffxDispatch(context: *mut *mut c_void, desc: *mut Header) -> u32 {
