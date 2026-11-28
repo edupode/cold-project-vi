@@ -21,6 +21,8 @@ namespace VIctoryLauncher
     {
         // ---------------------------------------------------------------- cards and engines
         bool hasNvidia, hasRadeon, rtx30;
+        // A GeForce RTX (20 to 50: DLSS runs), and one of the 20 or 30 series (DLSS Frame Generation only with MFG Unlocker).
+        bool anyRtx, olderRtx;
         // Every adapter DXGI reports, and whether the PC has only integrated graphics (Intel Iris Xe / UHD, an
         // AMD APU's Radeon Graphics): no memory of its own, far below what the game needs (Gpus.cs).
         List<GpuAdapter> adapters = new List<GpuAdapter>();
@@ -73,6 +75,8 @@ namespace VIctoryLauncher
                 if (!hasNvidia && !hasRadeon) gpuName = best.Name;
             }
             rtx30 = Regex.IsMatch(gpuName, @"RTX\s*30\d\d");
+            anyRtx = Regex.IsMatch(gpuName, @"RTX\s*[2-5]0\d\d");
+            olderRtx = Regex.IsMatch(gpuName, @"RTX\s*(20|30)\d\d");
             if (!hasNvidia && hasRadeon) gpuName = radeonName.Replace("AMD ", "");
         }
 
@@ -197,15 +201,21 @@ namespace VIctoryLauncher
         string NvSmoothDll { get { return Path.Combine(AppDir, "tools", "nvsmooth30", "version.dll"); } }
 
         // Which frame generation this PC gets: NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30,
-        // when the release brought it), else VIctory's own (VICTORY_FRAMEGEN, any card; this
+        // when the release brought it), else VIctory's own (VICTORY_VI_FRAMEGEN, any card; this
         // repository's engine only, the AMD engine does not have it yet).
         bool NvSmoothHere { get { return rtx30 && File.Exists(NvSmoothDll) && (FgChoice == "auto" || FgChoice == "nvsmooth30"); } }
         bool OwnFrameGen { get { return !rtxFrameGen && !NvSmoothHere && !UseAmdEngine && (FgChoice == "auto" || FgChoice == "vi"); } }
+        // The NVIDIA fork's frame generation, in this repository's engine (`victory run` with the switches
+        // `victory play` sets: VendorFrameGen): DLSS Frame Generation on an RTX (RTX 20/30 through MFG Unlocker),
+        // AMD FSR 3 on any card of its own memory.
+        bool DlssFgHere { get { return FgChoice == "dlss" && anyRtx && !UseAmdEngine; } }
+        bool FsrFgHere { get { return FgChoice == "fsr" && !UseAmdEngine && !integratedOnly; } }
 
         // The frame generation the player picked (launcher.ini fg_engine): auto (the best this card has), smooth
         // (NVIDIA Smooth Motion, RTX 40/50), nvsmooth30 (RTX 30, experimental) or vi (VIctory's own, any card,
-        // experimental). A choice the card cannot have falls to none (the box only lists what it can).
-        string FgChoice { get { var v = ReadSetting("fg_engine"); return v == "smooth" || v == "nvsmooth30" || v == "vi" ? v : "auto"; } }
+        // experimental), dlss (DLSS Frame Generation, RTX) or fsr (AMD FSR 3), the last two the NVIDIA fork's. A choice the
+        // card cannot have falls to none (the box only lists what it can).
+        string FgChoice { get { var v = ReadSetting("fg_engine"); return v == "smooth" || v == "nvsmooth30" || v == "vi" || v == "dlss" || v == "fsr" ? v : "auto"; } }
 
         ComboBox fgBox;
         readonly List<string> fgKeys = new List<string>();
@@ -218,6 +228,12 @@ namespace VIctoryLauncher
             Action<string, string> add = (key, text) => { fgKeys.Add(key); fgBox.Items.Add(text); };
             add("auto", L("Automatic (the best this card has)", "Automatico (o melhor desta placa)", "Automatique (le meilleur de cette carte)"));
             if (canSmooth) add("smooth", L("NVIDIA Smooth Motion (RTX 40/50)", "NVIDIA Smooth Motion (RTX 40/50)", "NVIDIA Smooth Motion (RTX 40/50)"));
+            if (!UseAmdEngine && anyRtx)
+                add("dlss", olderRtx ? L("DLSS Frame Generation (RTX 20/30, with MFG Unlocker)", "DLSS Frame Generation (RTX 20/30, com o MFG Unlocker)", "DLSS Frame Generation (RTX 20/30, avec MFG Unlocker)")
+                                     : L("DLSS Frame Generation (RTX 40/50)", "DLSS Frame Generation (RTX 40/50)", "DLSS Frame Generation (RTX 40/50)"));
+            if (!UseAmdEngine && !integratedOnly)
+                add("fsr", anyRtx ? L("AMD FSR 3 (with DLSS upscaling)", "AMD FSR 3 (com o upscaling DLSS)", "AMD FSR 3 (avec l'upscaling DLSS)")
+                                  : L("AMD FSR 3 (1080p screen only)", "AMD FSR 3 (so com ecra 1080p)", "AMD FSR 3 (écran 1080p seulement)"));
             if (rtx30 && File.Exists(NvSmoothDll)) add("nvsmooth30", L("NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, expérimental)"));
             if (!UseAmdEngine && !integratedOnly) add("vi", L("VIctory 2X (any card, experimental)", "VIctory 2X (qualquer placa, experimental)", "VIctory 2X (toute carte, expérimental)"));
             var i = fgKeys.IndexOf(FgChoice);
@@ -229,6 +245,7 @@ namespace VIctoryLauncher
             if (fgBox == null || fgBox.SelectedIndex < 0 || fgBox.SelectedIndex >= fgKeys.Count) return;
             var key = fgKeys[fgBox.SelectedIndex];
             if (key == FgChoice) return;
+            if (!AcceptVendorFrameGen(key)) { var back = fgKeys.IndexOf(FgChoice); fgBox.SelectedIndex = back < 0 ? 0 : back; return; }
             WriteSetting("fg_engine", key);
             rtxFrameGen = canSmooth && (key == "auto" || key == "smooth");
             if (smoothBox is OptionCard) ((OptionCard)smoothBox).Line = FrameGenLine();
@@ -248,12 +265,15 @@ namespace VIctoryLauncher
                 : string.Format(L("dedicated, {0:0.0} GB of its own", "dedicada, {0:0.0} GB proprios", "dédiée, {0:0.0} Go à elle"), own);
         }
 
-        bool FrameGenAvailable { get { return rtxFrameGen || NvSmoothHere || (OwnFrameGen && !integratedOnly); } }
+        bool FrameGenAvailable { get { return rtxFrameGen || NvSmoothHere || DlssFgHere || FsrFgHere || (OwnFrameGen && !integratedOnly); } }
 
         string FrameGenLine()
         {
             if (rtxFrameGen) return L("NVIDIA Smooth Motion (RTX 40/50, set up for you)", "NVIDIA Smooth Motion (RTX 40/50, configurado por ti)");
             if (NvSmoothHere) return L("NVSmooth30 for RTX 30 (experimental)", "NVSmooth30 para RTX 30 (experimental)");
+            if (DlssFgHere) return olderRtx ? L("DLSS Frame Generation through MFG Unlocker (RTX 20/30, experimental)", "DLSS Frame Generation pelo MFG Unlocker (RTX 20/30, experimental)", "DLSS Frame Generation par MFG Unlocker (RTX 20/30, expérimental)")
+                                            : L("DLSS Frame Generation 2X, with DLSS upscaling", "DLSS Frame Generation 2X, com o upscaling DLSS", "DLSS Frame Generation 2X, avec l'upscaling DLSS");
+            if (FsrFgHere) return L("AMD FSR 3 frame generation 2X", "Geracao de frames AMD FSR 3 2X", "Génération d'images AMD FSR 3 2X");
             if (OwnFrameGen) return L("VI frame generation: any card, a frame between each two (experimental)", "Geracao de frames VI: qualquer placa, um frame entre cada dois (experimental)");
             return L("Not in the AMD engine yet (pick the edupode engine on Hardware & ID to try it)", "Ainda nao no motor AMD (escolhe o motor edupode em Hardware e ID para experimentar)");
         }
@@ -262,6 +282,8 @@ namespace VIctoryLauncher
         {
             if (rtxFrameGen) return "Smooth Motion " + (smoothState == "on" ? L("On", "ligado") : L("ready", "pronto"));
             if (NvSmoothHere) return "NVSmooth30 " + (smoothBox.Checked ? L("On", "ligado") : L("off", "desligado"));
+            if (DlssFgHere) return "DLSS FG " + (smoothBox.Checked ? L("On", "ligada") : L("off", "desligada"));
+            if (FsrFgHere) return "FSR 3 " + (smoothBox.Checked ? L("On", "ligada") : L("off", "desligada"));
             if (OwnFrameGen) return L("VI frame gen ", "Geracao VI ") + (smoothBox.Checked ? L("On", "ligada") : L("off", "desligada"));
             return L("Frame gen n/a", "Geracao de frames n/d");
         }
@@ -282,7 +304,7 @@ namespace VIctoryLauncher
             var beside = Path.Combine(Path.GetDirectoryName(VictoryExe), "version.dll");
             try
             {
-                if (smoothBox.Checked)
+                if (smoothBox.Checked && NvSmoothHere)
                 {
                     File.Copy(NvSmoothDll, beside, true);
                     if (smoothState != "on") ApplySmooth(true, false);
@@ -302,6 +324,145 @@ namespace VIctoryLauncher
                 if (File.Exists(beside)) File.Delete(beside);
             }
             catch (Exception) { }
+        }
+
+        // ---------------------------------------------------------------- DLSS Frame Generation and FSR 3 (the NVIDIA fork's)
+        // Where victory.exe's get-dlss, get-fsr and get-mfg put NVIDIA's, AMD's and MFG Unlocker's files
+        // (apps\victory\src\play.rs: %LOCALAPPDATA%\victory, or the folder VICTORY_HOME names).
+        static string VictoryHome
+        {
+            get
+            {
+                var named = Environment.GetEnvironmentVariable("VICTORY_HOME");
+                return !string.IsNullOrEmpty(named) ? named : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "victory");
+            }
+        }
+        static string StreamlineDir { get { return Path.Combine(VictoryHome, "nvidia-sdk", "Streamline", "bin", "x64"); } }
+        static string FidelityFxDir { get { return Path.Combine(VictoryHome, "amd-fidelityfx"); } }
+        static string MfgDll { get { return Path.Combine(VictoryHome, "mfg-unlocker", "MFGUnlocker.dll"); } }
+        static bool HasStreamline { get { return File.Exists(Path.Combine(StreamlineDir, "sl.interposer.dll")); } }
+        static bool HasFsr
+        {
+            get { return File.Exists(Path.Combine(FidelityFxDir, "amd_fidelityfx_loader_dx12.dll")) && File.Exists(Path.Combine(FidelityFxDir, "amd_fidelityfx_framegeneration_dx12.dll")); }
+        }
+
+        // DLSS upscales for both: DLSS Frame Generation reads its inputs, and FSR 3 needs an upscaling made for the
+        // screen's size (the game's own FidelityFX only makes 1080p). Without an RTX, FSR 3 runs at a 1080p screen only.
+        bool VendorUpscaling { get { return anyRtx && (DlssFgHere || FsrFgHere); } }
+        bool FsrBlocked { get { return FsrFgHere && !anyRtx && DisplayHeight != 1080; } }
+
+        // Asked once when DLSS Frame Generation or FSR 3 is picked: what is downloaded, from where, and (RTX 20/30)
+        // MFG Unlocker, someone else's mod. false: the player said no, the choice goes back.
+        bool AcceptVendorFrameGen(string key)
+        {
+            if (key != "dlss" && key != "fsr") return true;
+            bool mfg = key == "dlss" && olderRtx;
+            var seen = "fg_ok_" + key + (mfg ? "_mfg" : "");
+            if (ReadSetting(seen) == "1") { smoothBox.Checked = true; return true; }
+            var lines = new List<string>();
+            if (key == "dlss")
+            {
+                lines.Add(L("DLSS Frame Generation (from the VIctory-NVIDIA fork): the card makes frames between the game's, from its depth and motion. DLSS also does the upscaling.",
+                            "DLSS Frame Generation (do fork VIctory-NVIDIA): a placa cria frames entre os do jogo, a partir da profundidade e do movimento. O DLSS tambem faz o upscaling.",
+                            "DLSS Frame Generation (du fork VIctory-NVIDIA) : la carte crée des images entre celles du jeu, à partir de la profondeur et du mouvement. DLSS fait aussi l'upscaling."));
+                if (mfg)
+                {
+                    lines.Add("");
+                    lines.Add(L("This card (" + gpuName + ") is an RTX 20/30: NVIDIA's frame generation runs only on RTX 40 and later. MFG Unlocker, someone else's mod (github.com/dashdogy/MFG-Unlocker, MIT licence, about 5 MB), unlocks it. NVIDIA does not support that, and it was not tested with this game.",
+                                "Esta placa (" + gpuName + ") e uma RTX 20/30: a geracao de frames da NVIDIA so corre nas RTX 40 e mais recentes. O MFG Unlocker, um mod de outra pessoa (github.com/dashdogy/MFG-Unlocker, licenca MIT, cerca de 5 MB), desbloqueia-a. A NVIDIA nao suporta isto, e nao foi testado com este jogo.",
+                                "Cette carte (" + gpuName + ") est une RTX 20/30 : la génération d'images de NVIDIA ne tourne que sur les RTX 40 et plus récentes. MFG Unlocker, le mod de quelqu'un d'autre (github.com/dashdogy/MFG-Unlocker, licence MIT, environ 5 Mo), la débloque. NVIDIA ne le prend pas en charge, et il n'a pas été testé avec ce jeu."));
+                }
+            }
+            else
+            {
+                lines.Add(L("AMD FSR 3 frame generation (from the VIctory-NVIDIA fork): a frame made between each two of the game's (2X).",
+                            "Geracao de frames AMD FSR 3 (do fork VIctory-NVIDIA): um frame criado entre cada dois do jogo (2X).",
+                            "Génération d'images AMD FSR 3 (du fork VIctory-NVIDIA) : une image créée entre chaque deux du jeu (2X)."));
+                lines.Add(anyRtx ? L("On this RTX, DLSS does the upscaling FSR 3 reads.", "Nesta RTX, o DLSS faz o upscaling que o FSR 3 le.", "Sur cette RTX, DLSS fait l'upscaling que FSR 3 lit.")
+                                 : L("Without an RTX, it needs the 1080p screen size (Play page): the game's own upscaling makes only that.", "Sem uma RTX, precisa do ecra a 1080p (pagina Jogar): o upscaling do proprio jogo so faz esse.", "Sans RTX, il faut l'écran en 1080p (page Jouer) : l'upscaling du jeu ne fait que celui-là."));
+            }
+            lines.Add("");
+            lines.Add(L("At PLAY, what is missing is downloaded once into " + VictoryHome + ":", "No JOGAR, o que faltar e descarregado uma vez para " + VictoryHome + ":", "Au JOUER, ce qui manque est téléchargé une fois dans " + VictoryHome + " :"));
+            if (anyRtx) lines.Add(L("   •  NVIDIA's DLSS files, NVIDIA's own licence, github.com/NVIDIA-RTX/Streamline (about 70 MB)", "   •  os ficheiros DLSS da NVIDIA, licenca da NVIDIA, github.com/NVIDIA-RTX/Streamline (cerca de 70 MB)", "   •  les fichiers DLSS de NVIDIA, licence de NVIDIA, github.com/NVIDIA-RTX/Streamline (environ 70 Mo)"));
+            if (key == "fsr") lines.Add(L("   •  AMD's FSR 3 files, AMD's own licence, github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK (about 30 MB)", "   •  os ficheiros FSR 3 da AMD, licenca da AMD, github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK (cerca de 30 MB)", "   •  les fichiers FSR 3 d'AMD, licence d'AMD, github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK (environ 30 Mo)"));
+            if (mfg) lines.Add(L("   •  MFG Unlocker, from its author's GitHub release", "   •  o MFG Unlocker, da release do autor no GitHub", "   •  MFG Unlocker, depuis la release GitHub de son auteur"));
+            lines.Add("");
+            lines.Add(L("Experimental here. It replaces the preset's own upscaler (its world resolution becomes the DLSS mode nearest to it). Changes made in the game's F1 menu are not kept when the launcher starts the game.",
+                        "Experimental aqui. Substitui o upscaler do preset (a resolucao do mundo passa ao modo DLSS mais proximo). As mudancas feitas no menu F1 do jogo nao ficam guardadas quando o launcher arranca o jogo.",
+                        "Expérimental ici. Remplace l'upscaler du preset (sa résolution du monde devient le mode DLSS le plus proche). Les changements faits dans le menu F1 du jeu ne sont pas gardés quand le launcher lance le jeu."));
+            var answer = Notice(key == "dlss" ? "DLSS Frame Generation" : "AMD FSR 3", string.Join("\r\n", lines.ToArray()),
+                mfg ? L("Use it, with MFG Unlocker", "Usar, com o MFG Unlocker", "L'utiliser, avec MFG Unlocker") : L("Use it", "Usar", "L'utiliser"),
+                L("Cancel", "Cancelar", "Annuler"));
+            if (answer != 1) return false;
+            WriteSetting(seen, "1");
+            smoothBox.Checked = true;
+            return true;
+        }
+
+        // The DLSS mode whose scene size is nearest the preset's scale. The game's own FidelityFX (FSR 3 without
+        // an RTX) takes only 720p or 1080p into 1080p: quality or dlaa there.
+        static string DlssModeFor(string scale, bool dlss)
+        {
+            double s = 1.0;
+            if (scale != null) double.TryParse(scale, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out s);
+            if (s <= 0) s = 1.0;
+            if (!dlss) return s >= 0.95 ? "dlaa" : "quality";
+            return s >= 0.95 ? "dlaa" : s >= 0.62 ? "quality" : s >= 0.55 ? "balanced" : s >= 0.45 ? "performance" : "ultraperformance";
+        }
+
+        // What `victory play` sets for DLSS Frame Generation or FSR 3 (play.rs, settings), for the launcher's
+        // `victory run`. Only with the files in place (FetchFrameGenFiles, at PLAY): without them, nothing.
+        void VendorFrameGen(Dictionary<string, string> e)
+        {
+            if (!smoothBox.Checked || (!DlssFgHere && !FsrFgHere) || FsrBlocked) return;
+            bool dlss = VendorUpscaling;
+            if (dlss && !HasStreamline) return;
+            if (FsrFgHere && !HasFsr) return;
+            string scale;
+            e.TryGetValue("VICTORY_RENDER_SCALE", out scale);
+            var mode = DlssModeFor(scale, dlss);
+            // The game's FidelityFX path, which DLSS and FSR 3 read, in place of its own upscaler; the scene's
+            // size is the DLSS mode's.
+            e.Remove("VICTORY_RENDER_SCALE");
+            e.Remove("VICTORY_OWN_UPSCALER");
+            e["VICTORY_DLSS_MODE"] = mode;
+            if (dlss) { e["VICTORY_DLSS"] = "1"; e["VICTORY_STREAMLINE_DIR"] = StreamlineDir; }
+            if (DlssFgHere) e["VICTORY_FRAMEGEN"] = "1";
+            else { e["VICTORY_FSR_FRAMEGEN"] = "1"; e["VICTORY_FIDELITYFX_DIR"] = FidelityFxDir; }
+            e["VICTORY_FRAMEGEN_X"] = "2";
+            // Frame generation takes 1.5 to 2 GB of the card's memory, which the layer otherwise fills with textures.
+            e["VICTORY_TEXTURE_ROOM_PERCENT"] = "80";
+            if (DlssFgHere && olderRtx && File.Exists(MfgDll)) { e["VICTORY_MFG_UNLOCKER"] = "1"; e["VICTORY_MFG_UNLOCKER_DLL"] = MfgDll; }
+            // For the F1 menu: what it shows as the current choices.
+            e["VICTORY_MENU_CONSOLE"] = "series-s";
+            e["VICTORY_MENU_DLSS"] = dlss ? mode : "off";
+            e["VICTORY_MENU_FRAMEGEN"] = "2";
+            e["VICTORY_MENU_FG_TYPE"] = DlssFgHere ? "dlss" : "fsr";
+        }
+
+        // At PLAY (a worker thread), before the game: what DLSS Frame Generation or FSR 3 needs and is missing,
+        // fetched by victory.exe (get-dlss, get-fsr, get-mfg). One that does not arrive leaves the game without it.
+        void FetchFrameGenFiles(string log, bool on)
+        {
+            if (!on || (!DlssFgHere && !FsrFgHere)) return;
+            if (FsrBlocked)
+            {
+                Log(L("FSR 3 needs the 1080p screen size without an RTX: this game runs without frame generation.", "O FSR 3 precisa do ecra a 1080p sem uma RTX: este jogo corre sem geracao de frames.", "FSR 3 a besoin de l'écran en 1080p sans RTX : ce jeu tourne sans génération d'images."));
+                return;
+            }
+            Func<string, string, Func<bool>, bool> get = (command, what, have) => {
+                if (have()) return true;
+                if (ClosingNow()) return false;
+                Log(L("Downloading ", "A descarregar ", "Téléchargement de ") + what + "...");
+                try { var p = Start(command, log); p.WaitForExit(); } catch (Exception ex) { Log(what + ": " + ex.Message); }
+                var ok = have();
+                Log(ok ? what + L(": ready.", ": pronto.", " : prêt.")
+                       : what + L(" did not arrive (see the session log): the game runs without it.", " nao chegou (ve o log da sessao): o jogo corre sem isso.", " n'est pas arrivé (voir le log de la session) : le jeu tourne sans."));
+                return ok;
+            };
+            if (VendorUpscaling && !get("get-dlss", L("NVIDIA's DLSS files", "os ficheiros DLSS da NVIDIA", "les fichiers DLSS de NVIDIA"), () => HasStreamline)) return;
+            if (FsrFgHere) get("get-fsr", L("AMD's FSR 3 files", "os ficheiros FSR 3 da AMD", "les fichiers FSR 3 d'AMD"), () => HasFsr);
+            if (DlssFgHere && olderRtx) get("get-mfg", "MFG Unlocker", () => File.Exists(MfgDll));
         }
 
         // ---------------------------------------------------------------- hardware, ID and the report

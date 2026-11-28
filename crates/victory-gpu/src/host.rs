@@ -9663,7 +9663,7 @@ struct Presenter {
     hwnd: HWND,
     meter: Meter,
     composer: Option<crate::compose::Composer>,
-    /// `VICTORY_FRAMEGEN=1`: frames made between the title's ([`crate::framegen`]).
+    /// `VICTORY_VI_FRAMEGEN=1`: frames made between the title's ([`crate::framegen`]).
     framegen: Option<crate::framegen::FrameGen>,
     /// The numbers panel (F3), in every build.
     panel: panel::Panel,
@@ -10471,7 +10471,7 @@ impl Host {
             p.menu.draw(self, copy, &back, (width, height), format);
             #[cfg(not(feature = "diagnostics"))]
             let _ = frame;
-            // `VICTORY_FRAMEGEN=1`: the frame kept, and the one halfway to it from the last drawn
+            // `VICTORY_VI_FRAMEGEN=1`: the frame kept, and the one halfway to it from the last drawn
             // over `back` (in COPY_DEST before and after); the real one is shown later by the pacer.
             let generated = if crate::framegen::on() && !read_now {
                 if p.framegen.as_ref().is_some_and(|g| !g.fits(p.format, p.out)) {

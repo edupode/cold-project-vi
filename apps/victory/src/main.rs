@@ -524,6 +524,12 @@ fn main() -> Result<()> {
             title_args,
         } => {
             victory_hle::runtime::set_title_args(title_args);
+            // MFG Unlocker for a start that is not `play` (the launcher's: it sets
+            // `VICTORY_MFG_UNLOCKER_DLL` after `victory get-mfg`), loaded as `play` loads it.
+            #[cfg(windows)]
+            if execute {
+                play::load_mfg();
+            }
             run::run(&exe, unimplemented, strict, execute, console)
         }
         #[cfg(all(windows, feature = "diagnostics"))]

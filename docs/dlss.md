@@ -67,6 +67,20 @@ later), hardware-accelerated GPU scheduling on (frame generation needs it).
 | `VICTORY_FRAMEGEN_HUDLESS` | `0` | on (with `VICTORY_FRAMEGEN=1`) | `0`: no colour without the interface is copied or tagged on Series X (generated frames then warp the interface) |
 | `VICTORY_STREAMLINE_PRESENT` | `1` | off | DLSS without frame generation: our swap chain is Streamline's proxy of it, so Streamline sees the presents (no "presentCommon() was not observed") |
 
+`VICTORY_FRAMEGEN` is DLSS Frame Generation only. VIctory's own frame
+generation (VIctory 2X, `crates/victory-gpu/src/framegen.rs`, any card) is
+`VICTORY_VI_FRAMEGEN=1`: the two had one name, and a DLSS start turned both on.
+
+**From Julia's Launcher.** The launcher starts `victory run`, not `play`. Its
+frame generation box offers "DLSS Frame Generation" (RTX 40/50; RTX 20/30 with
+MFG Unlocker) and "AMD FSR 3" (with DLSS upscaling on an RTX, else at a 1080p
+screen only). At PLAY it runs `victory get-dlss`, `get-fsr` and `get-mfg` for
+what is missing, then sets what `play` sets (`launcher/Hardware.cs`,
+`VendorFrameGen`): the preset's own upscaler and render scale give way to the
+title's FidelityFX path at the nearest `VICTORY_DLSS_MODE`, and `run` loads MFG
+Unlocker from `VICTORY_MFG_UNLOCKER_DLL` as `play` does. The F1 menu's saved
+choices are not read on that path.
+
 ## How it works
 
 **Where the title upscales.** The title imports `ffxCreateContext`,

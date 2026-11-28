@@ -1969,7 +1969,7 @@ namespace VIctoryLauncher
             if (borderlessBox.Checked) { set("VICTORY_BORDERLESS", "1"); set("VICTORY_BORDERLESS_DPI", "0"); }
             if (fps60Box.Checked && !m.UltraLow) set("VICTORY_FPS_MAX", "60");
             // VIctory's own frame generation, for cards without Smooth Motion or NVSmooth30.
-            if (smoothBox.Checked && OwnFrameGen) set("VICTORY_FRAMEGEN", "1");
+            if (smoothBox.Checked && OwnFrameGen) set("VICTORY_VI_FRAMEGEN", "1");
             // Advanced Tweaks: the player's values over the preset they start from (Custom.cs).
             if (m.Custom) ApplyCustom(e);
             if (OutputHeight == 720)
@@ -1979,6 +1979,8 @@ namespace VIctoryLauncher
                 if (s == null) { e.Remove("VICTORY_RENDER_SCALE"); e.Remove("VICTORY_OWN_UPSCALER"); }
                 else { set("VICTORY_RENDER_SCALE", s); set("VICTORY_OWN_UPSCALER", "1"); }
             }
+            // DLSS Frame Generation or FSR 3 (Hardware.cs): over the preset's upscaler, so after its scale is known.
+            VendorFrameGen(e);
             set("VICTORY_VRAM_RESERVE", reserveBox.Checked ? "max" : "0");
             if (cpuBox.Checked)
             {
@@ -1992,7 +1994,8 @@ namespace VIctoryLauncher
             if (facesBox.Checked) set("VICTORY_TEXTURE_NO_WAIT", "0");
             if (loadingBox.Checked) set("VICTORY_BAKE_NO_WAIT", "1");
             // The F3 panel's "FRAME GEN" line: the driver's frame generation runs outside the emulator.
-            set("VICTORY_PANEL_FRAMEGEN", !smoothBox.Checked ? "OFF" : rtxFrameGen ? "SMOOTH MOTION" : NvSmoothHere ? "NVSMOOTH30" : OwnFrameGen ? "VI 2X" : "OFF");
+            set("VICTORY_PANEL_FRAMEGEN", !smoothBox.Checked ? "OFF" : rtxFrameGen ? "SMOOTH MOTION" : NvSmoothHere ? "NVSMOOTH30"
+                : e.ContainsKey("VICTORY_FRAMEGEN") ? "DLSS FG" : e.ContainsKey("VICTORY_FSR_FRAMEGEN") ? "FSR 3" : OwnFrameGen ? "VI 2X" : "OFF");
             ApplyTestEnv(e);
             return e;
         }
@@ -2134,9 +2137,12 @@ namespace VIctoryLauncher
             Busy(true);
             var game = GameExe;
             bool warmFirst = warmBox.Checked;
+            bool frameGenOn = smoothBox.Checked;
             new Thread(() => {
                 try
                 {
+                    // DLSS Frame Generation or FSR 3 picked: NVIDIA's, AMD's or MFG Unlocker's files, where missing.
+                    FetchFrameGenFiles(log, frameGenOn);
                     if (warmFirst) WarmWithBar(log);
                     if (ClosingNow()) return;
                     var started = DateTime.Now;
