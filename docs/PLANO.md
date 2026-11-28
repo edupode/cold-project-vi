@@ -73,7 +73,7 @@ comum: perder escritas do processador (geometria corrompida, "bonecos esticados"
 
 | # | Mudança | Origem | Medido por eles | Ataca |
 |---|---|---|---|---|
-| B1 | `BURY_ASIDE`: objetos que esperaram por um voo libertados numa thread à parte | Peppacodes/playablegames-peppa | **−23 ms** médio | preparar |
+| B1 | **Em código, a medir** · `BURY_ASIDE`: objetos que esperaram por um voo libertados numa thread à parte | Peppacodes/playablegames-peppa | **−23 ms** médio | preparar |
 | B2 | `FILL_TITLE=2`: pequenos preenchimentos de constantes sem esperar pela cópia de volta (página sem escrita de shader há 600 frames) | Peppa | **−11 ms** | cópia de volta |
 | B3 | Um só lock das proteções por lote de refresh (3229 → 31 passagens por frame) | Marvisak #3585 (neonbyte1) | **−8,9 ms** a preparar, −10,5 ms no frame | cópias (30–35 ms) |
 | B4 | `VICTORY_OWNER`: páginas que os shaders escreveram ficam na placa até alguém lhes tocar (87 % do que se copia de volta é reescrito pela placa antes de ser lido) | Marvisak #3677 (neonbyte1) | **−9 ms** no frame, −10 ms de cópia de volta | cópia de volta (14–18 ms) |

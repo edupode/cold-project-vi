@@ -529,6 +529,62 @@ fn bury(finished: u64) {
     drop(done);
 }
 
+/// [`bury`] for the thread that lands flights (the relay's landing), with
+/// `VICTORY_BURY_ASIDE=1` (off by default: [`bury`], as before): what is done
+/// with is taken out of [`RETIRED`] as [`bury`] takes it (oldest first,
+/// [`bury_lag`] behind), and dropped on a thread of its own (`victory-bury`)
+/// instead of in the landing, whose time is the frame line's "copying back".
+/// Dropping later is always allowed: these objects only wait for the card, and
+/// [`Retired`] is already dropped on whatever thread finishes a submission. If
+/// that thread cannot be started they are dropped here.
+///
+/// From Steenax6 (fxceless/victory-fork pull request 1224, by way of
+/// Peppacodes/playablegames-peppa 92b7cf93, GPL-3.0): there, releasing them was
+/// 2 ms a frame of the landing thread, and the fork measured -23 ms a frame
+/// with it on.
+fn bury_aside(finished: u64) {
+    static ON: OnceLock<bool> = OnceLock::new();
+    if !*ON.get_or_init(|| std::env::var_os("VICTORY_BURY_ASIDE").is_some_and(|v| v == "1")) {
+        bury(finished);
+        return;
+    }
+    let finished = finished.saturating_sub(bury_lag());
+    let done: Vec<(u64, Retired)> = {
+        let mut retired = RETIRED.lock().unwrap_or_else(|e| e.into_inner());
+        let n = retired.iter().take_while(|(at, _)| *at <= finished).count();
+        if n == 0 {
+            return;
+        }
+        retired.drain(..n).collect()
+    };
+    BURIED_ASIDE.fetch_add(done.len() as u64, Ordering::Relaxed);
+    static TO: OnceLock<Option<Mutex<std::sync::mpsc::Sender<Vec<(u64, Retired)>>>>> = OnceLock::new();
+    let to = TO.get_or_init(|| {
+        let (to, from) = std::sync::mpsc::channel::<Vec<(u64, Retired)>>();
+        std::thread::Builder::new()
+            .name("victory-bury".into())
+            .spawn(move || {
+                for done in from {
+                    drop(done);
+                }
+            })
+            .ok()
+            .map(|_| Mutex::new(to))
+    });
+    match to {
+        Some(to) => {
+            // (The thread gone: dropped here.)
+            if let Err(e) = to.lock().unwrap_or_else(|e| e.into_inner()).send(done) {
+                drop(e.0);
+            }
+        }
+        None => drop(done),
+    }
+}
+
+/// Objects handed to the `victory-bury` thread ([`bury_aside`]), per frame line.
+static BURIED_ASIDE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Objects [`retire`] dropped at once (no submission was running) and
 /// kept until a running submission finished, since the start.
 static RETIREMENTS: [std::sync::atomic::AtomicU64; 2] = [const { std::sync::atomic::AtomicU64::new(0) }; 2];
@@ -4134,12 +4190,14 @@ fn late_line(frames: f64) {
             "the relay per frame (VICTORY_RELAY=1): {:.1} flights landed in {:.1} landings by the thread that copies back, \
              beside the submitting thread; that thread waited {:.1} ms for the card with nothing to land and {:.1} ms for \
              fetches of card copies' pieces, and was {:.1} ms landing in all (the frame line's \"copying back\" is its time; \
-             \"settles\" above are waits of other threads for it)",
+             \"settles\" above are waits of other threads for it); {:.0} objects it let go were dropped by victory-bury \
+             (VICTORY_BURY_ASIDE=1)",
             r[1],
             r[0],
             r[2] / 1000.0,
             r[3] / 1000.0,
             r[4] / 1000.0,
+            BURIED_ASIDE.swap(0, Ordering::Relaxed) as f64 / frames,
         );
         if send::own() {
             let t: Vec<f64> = send::STATS.iter().map(|r| r.swap(0, Ordering::Relaxed) as f64 / frames).collect();
@@ -5507,7 +5565,7 @@ impl Host {
         }
         if last > 0 {
             FINISHED.store(last, Ordering::Release);
-            bury(last);
+            bury_aside(last);
         }
         stage.next("landing: the rest");
         self.log_messages();

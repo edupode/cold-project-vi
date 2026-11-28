@@ -91,7 +91,8 @@ O motor com que todas as placas jogam por defeito. Medido no portátil do autor 
 O plano: [docs/PLANO.md](docs/PLANO.md). Um frame no mundo demora aqui 104-120 ms, dos quais 68-77 a preparar no
 processador e 0 à espera da placa, por isso as próximas releases vão atrás disso: mudanças medidas noutros forks e em
 pull requests do VIctory original, uma de cada vez, cada uma desligada até os relatórios dos jogadores a confirmarem
-(`scripts/report-stats.py`).
+(`scripts/report-stats.py`). A primeira já entrou: `VICTORY_BURY_ASIDE=1` (desligada por defeito), que passa a uma
+thread própria a libertação dos objetos que o relay libertava durante a aterragem (B1 no plano); está a ser medida.
 
 ## Progresso na escala do PortWatch VI
 

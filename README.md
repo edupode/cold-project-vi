@@ -116,7 +116,8 @@ The engine every card plays with by default. Measured on the author's RTX 5070 T
 The plan, in Portuguese: [docs/PLANO.md](docs/PLANO.md). A world frame here takes 104-120 ms, 68-77 of them preparing
 on the processor and 0 waiting for the card, so the next releases go after that: changes measured in other forks and
 upstream pull requests, one at a time, each off by default until the players' reports confirm it
-(`scripts/report-stats.py`).
+(`scripts/report-stats.py`). First in: `VICTORY_BURY_ASIDE=1` (off by default), which lets a thread of its own drop
+the host objects the relay used to drop while landing (B1 in the plan); being measured.
 
 ## Progress on PortWatch VI's scale
 

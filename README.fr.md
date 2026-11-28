@@ -93,7 +93,8 @@ Le moteur avec lequel toutes les cartes jouent par défaut. Mesuré sur le porta
 Le plan, en portugais : [docs/PLANO.md](docs/PLANO.md). Une image du monde prend ici 104-120 ms, dont 68-77 à
 préparer sur le processeur et 0 à attendre la carte : les prochaines versions s'attaquent à cela, avec des changements
 mesurés dans d'autres forks et des pull requests du VIctory d'origine, un à la fois, chacun désactivé jusqu'à ce que
-les rapports des joueurs le confirment (`scripts/report-stats.py`).
+les rapports des joueurs le confirment (`scripts/report-stats.py`). Le premier est arrivé : `VICTORY_BURY_ASIDE=1` (désactivé par défaut), qui confie à un
+thread à lui la libération des objets que le relais libérait pendant l'atterrissage (B1 du plan) ; en cours de mesure.
 
 ## Progression sur l'échelle de PortWatch VI
 
