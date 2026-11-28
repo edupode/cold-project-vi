@@ -35,6 +35,22 @@ GTA VI a partir do **teu próprio dump de Xbox Series**, no Windows, através do
 [VIctory](https://github.com/Marvisak/VIctory). Este ramo é a build do cgbj com a iluminação do VIctory-NVIDIA
 e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
 
+### Novidades deste ramo (28/11/2026)
+
+- **O fork VIctory-NVIDIA juntado** ([trustno1-coder/VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) e os seus
+  contribuidores; os commits deles mantêm os autores): DLSS Frame Generation e geração de frames AMD FSR 3 pelo NVIDIA Streamline,
+  o limite de 30 fps do próprio jogo levantado (a caixa 60 FPS), água aberta sem os blocos escuros, comandos PS4 e PS5, o runtime do Windows 10.
+- **Geração de frames na página Jogar:** Automático, NVIDIA Smooth Motion, DLSS Frame Generation (RTX 40/50; RTX 20/30 com o
+  [MFG Unlocker](https://github.com/dashdogy/MFG-Unlocker), um mod de terceiros com licença MIT, só descarregado se o escolheres),
+  FSR 3 (placas RTX, precisa do upscaling DLSS) ou VIctory 2X. Os ficheiros da NVIDIA e da AMD vêm do GitHub delas ao JOGAR.
+- **F1 no jogo:** menu de definições redesenhado (secções, o que faz cada opção); o que mudares aplica-se no JOGAR seguinte.
+  **F3:** o painel de estatísticas, em todos os builds.
+- **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
+- **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
+  `victory.exe` novo aquece e arranca de novo uma vez, sozinho.
+- Os FPS abaixo são de antes deste merge. Se o Windows Defender apagar um launcher acabado de compilar (deteção `!ml`),
+  Segurança do Windows, Histórico de proteção, **Permitir no dispositivo** recupera-o.
+
 ### O motor edupode
 
 O motor com que todas as placas jogam por defeito. Medido no portátil do autor (RTX 5070 Ti de 12 GB, 32 GB de RAM):

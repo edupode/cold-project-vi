@@ -60,6 +60,22 @@ GTA VI from **your own Xbox Series dump**, on Windows, through [VIctory](https:/
 (this branch: the cgbj build with the VIctory-NVIDIA lighting and many changes of our own). **No game files are
 included.**
 
+### What's new on this branch (28/11/2026)
+
+- **The VIctory-NVIDIA fork merged in** ([trustno1-coder/VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA) and its
+  contributors; their commits keep their authors): DLSS Frame Generation and AMD FSR 3 frame generation through NVIDIA
+  Streamline, the game's own 30 fps limit lifted (the 60 FPS box), open water without the dark blocks, PS4 and PS5 pads, the Windows 10 runtime.
+- **Frame generation on the Play page:** Automatic, NVIDIA Smooth Motion, DLSS Frame Generation (RTX 40/50; RTX 20/30 with
+  [MFG Unlocker](https://github.com/dashdogy/MFG-Unlocker), someone else's MIT-licensed mod, fetched only if you pick it),
+  FSR 3 (RTX cards, it needs DLSS upscaling) or VIctory 2X. NVIDIA's and AMD's files are fetched from their own GitHub at PLAY.
+- **F1 in the game:** a redesigned settings menu (sections, what each setting does); what you change there applies at the next
+  PLAY. **F3:** the stats panel, in every build.
+- **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
+- **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
+  `victory.exe` warms up and starts again once, by itself.
+- The FPS figures below are from before this merge. If Windows Defender removes a freshly built launcher (a `!ml` detection),
+  Windows Security, Protection history, **Allow on device** brings it back.
+
 ### The edupode engine
 
 The engine every card plays with by default. Measured on the author's RTX 5070 Ti laptop (12 GB, 32 GB RAM):
