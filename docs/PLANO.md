@@ -95,6 +95,11 @@ Medidos pelos autores; cada um entra desligado, é medido aqui e nos relatórios
 ### AMD
 - [ ] `device removed` em 12 jogadores (RX 6800 XT, 6750 XT, 7600, quase todos no preset forte): cruzar driver,
       preset e tempo até ao erro.
+- [ ] Do DexNom/VIctory (GPL-3.0, a melhor imagem em AMD, mas 3-4 fps; 340 commits desde a base comum, 71 já
+      cá estão, incluindo o `GetDeviceRemovedReason` que fazia o jogo julgar a placa perdida): recuperar os pipelines
+      de sombras em Radeon e o streaming de texturas na cidade (`5f4c3df4`), o sampling de quads e as texturas
+      esparsas (`921d8d3b`), e a máscara wave64 do shader de visibilidade por voxels (`76749ce5`; muda o tradutor,
+      obriga a recompilar a cache). Cada um medido em AMD antes de entrar.
 - [ ] Motor Belobug: opções "renderer ports" e "guardar texturas em disco" (com limite de tamanho).
 - [ ] Confirmar com log a configuração partilhada que diz dar 102 fps (com relógio de 60 FPS, provavelmente conta
       apresentações).
