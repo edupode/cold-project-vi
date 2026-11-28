@@ -7,12 +7,16 @@
 //! summary and `scripts/report-stats.py` count them by kind, so the worst places of the game show from the players'
 //! own reports.
 //!
+//! The keys are read by a thread of their own every 15 ms, not once per frame: at 5 fps a frame lasts 200 ms, longer
+//! than a quick press, and a press read only at presents would be missed.
+//!
 //! **Hitches and drops**, found without anyone pressing anything: a `HITCH` line when frames take far longer than
-//! the ones around them (at most one line every 5 s, summing what happened in it), and an `FPS DROP` line when the
-//! frame rate of the last 5 s falls under 60 % of the half minute before. Not in the first minute (loading).
+//! the ones before them (at most one line every 30 s, summing what happened in it), and an `FPS DROP` line when the
+//! frame rate of the last 5 s falls under 60 % of the half minute before. Not in the first minute and a half (loading).
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_MENU, VK_NUMPAD1};
@@ -34,9 +38,14 @@ pub(super) const KINDS: [&str; 9] = [
 /// How long the panel shows that a mark was taken.
 const BANNER_FOR: Duration = Duration::from_secs(4);
 /// No hitch or drop lines before this much of the run (the start loads).
-const QUIET_START: Duration = Duration::from_secs(60);
+const QUIET_START: Duration = Duration::from_secs(90);
 /// At most one hitch line in this time.
-const HITCH_EVERY: Duration = Duration::from_secs(5);
+const HITCH_EVERY: Duration = Duration::from_secs(30);
+/// A hitch: a frame this many times the median of the ones before it, and at least `HITCH_MIN_MS`.
+const HITCH_TIMES: f32 = 4.0;
+const HITCH_MIN_MS: f32 = 150.0;
+/// How often the key thread looks at the keys.
+const KEYS_EVERY: Duration = Duration::from_millis(15);
 /// At most one drop line in this time.
 const DROP_EVERY: Duration = Duration::from_secs(10);
 /// Frame times kept (about 10 s at 30 fps).
@@ -47,10 +56,9 @@ struct State {
     last: Option<Instant>,
     /// Recent frame times (ms), newest last.
     times: VecDeque<f32>,
-    keys: [bool; 9],
     banner: Option<(String, Instant)>,
-    /// Hitches since the last hitch line: how many, the longest, and when that line was.
-    hitches: (u32, f32),
+    /// Hitches since the last hitch line: how many, the longest, and the median of the frames before that one.
+    hitches: (u32, f32, f32),
     hitch_said: Instant,
     /// Frames and time in the current 5 s, and the frame rate of the half minute before (0: none yet).
     window: (u32, Instant),
@@ -60,6 +68,7 @@ struct State {
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
+static KEYS_STARTED: AtomicBool = AtomicBool::new(false);
 
 fn ours_in_front() -> bool {
     let mut process = 0;
@@ -102,17 +111,71 @@ fn memory() -> String {
     }
 }
 
-/// A frame was presented: the keys, and the hitch and drop watch.
+/// The hitch test: a frame `HITCH_TIMES` times the median of the ones before it, and at least `HITCH_MIN_MS`.
+fn hitch_over(median: f32) -> f32 {
+    (HITCH_TIMES * median).max(HITCH_MIN_MS)
+}
+
+/// Writes a player's mark: what kind, and the numbers of the moment.
+fn mark(s: &mut State, i: usize, now: Instant) {
+    let kind = KINDS[i];
+    s.marks[i] += 1;
+    let minutes = (now - s.started).as_secs_f64() / 60.0;
+    let (median, longest, fps) = recent(&s.times, 2000.0);
+    tracing::warn!(
+        "MARK {} {kind} at {minutes:.1} min: {fps:.1} fps, frame {median:.0} ms, longest {longest:.0} ms in the last 2 s; {} (a player's mark, Numpad/Alt+{})",
+        i + 1,
+        memory(),
+        i + 1
+    );
+    s.banner = Some((format!("MARKED {}: {kind}  (IN THE LOG)", i + 1), now));
+    // (Off this thread: Beep waits for the sound to end.)
+    std::thread::spawn(|| {
+        // SAFETY: a plain call.
+        unsafe { windows_sys::Win32::System::Diagnostics::Debug::Beep(1200, 90) };
+    });
+}
+
+/// The key thread: Numpad 1-9, or Alt with 1-9, with our window in front, every `KEYS_EVERY`.
+fn watch_keys() {
+    let mut keys = [false; 9];
+    let mut said_not_in_front = false;
+    loop {
+        std::thread::sleep(KEYS_EVERY);
+        let alt = down(VK_MENU);
+        for i in 0..9u16 {
+            let pressed = down(VK_NUMPAD1 + i) || (alt && down(u16::from(b'1') + i));
+            let was = std::mem::replace(&mut keys[i as usize], pressed);
+            if !pressed || was {
+                continue;
+            }
+            if !ours_in_front() {
+                if !std::mem::replace(&mut said_not_in_front, true) {
+                    tracing::info!("a mark key ({}) was pressed with another window in front: not marked", i + 1);
+                }
+                continue;
+            }
+            let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(s) = state.as_mut() {
+                mark(s, i as usize, Instant::now());
+            }
+        }
+    }
+}
+
+/// A frame was presented: the frame times, and the hitch and drop watch.
 pub(super) fn frame() {
+    if !KEYS_STARTED.swap(true, Ordering::Relaxed) {
+        let _ = std::thread::Builder::new().name("victory-marks".into()).spawn(watch_keys);
+    }
     let now = Instant::now();
     let mut state = STATE.lock().unwrap_or_else(|e| e.into_inner());
     let s = state.get_or_insert_with(|| State {
         started: now,
         last: None,
         times: VecDeque::with_capacity(KEPT),
-        keys: [false; 9],
         banner: None,
-        hitches: (0, 0.0),
+        hitches: (0, 0.0, 0.0),
         hitch_said: now,
         window: (0, now),
         before: 0.0,
@@ -122,6 +185,8 @@ pub(super) fn frame() {
     let minutes = (now - s.started).as_secs_f64() / 60.0;
     let ms = s.last.map_or(0.0, |l| (now - l).as_secs_f64() as f32 * 1000.0);
     s.last = Some(now);
+    // The frames before this one, for the hitch test.
+    let (median, _, _) = recent(&s.times, 4000.0);
     if ms > 0.0 {
         if s.times.len() == KEPT {
             s.times.pop_front();
@@ -129,54 +194,31 @@ pub(super) fn frame() {
         s.times.push_back(ms);
     }
 
-    // The marks: Numpad 1-9, or Alt with 1-9, with our window in front.
-    let alt = down(VK_MENU);
-    for i in 0..9u16 {
-        let pressed = down(VK_NUMPAD1 + i) || (alt && down(u16::from(b'1') + i));
-        let was = std::mem::replace(&mut s.keys[i as usize], pressed);
-        if !pressed || was || !ours_in_front() {
-            continue;
-        }
-        let kind = KINDS[i as usize];
-        s.marks[i as usize] += 1;
-        let (median, longest, fps) = recent(&s.times, 2000.0);
-        tracing::warn!(
-            "MARK {} {kind} at {minutes:.1} min: {fps:.1} fps, frame {median:.0} ms, longest {longest:.0} ms in the last 2 s; {} (a player's mark, Numpad/Alt+{})",
-            i + 1,
-            memory(),
-            i + 1
-        );
-        s.banner = Some((format!("MARKED {}: {kind}  (IN THE LOG)", i + 1), now));
-        // (Off the presenting thread: Beep waits for the sound to end.)
-        std::thread::spawn(|| {
-            // SAFETY: a plain call.
-            unsafe { windows_sys::Win32::System::Diagnostics::Debug::Beep(1200, 90) };
-        });
-    }
-
     if now - s.started < QUIET_START || ms <= 0.0 {
         s.window = (0, now);
+        s.hitch_said = now;
         return;
     }
-    // Hitches: a frame far longer than the ones around it.
-    let (median, _, _) = recent(&s.times, 4000.0);
-    if ms > (4.0 * median).max(100.0) {
+    // Hitches: a frame far longer than the ones before it.
+    if median > 0.0 && ms > hitch_over(median) {
         s.hitches.0 += 1;
-        s.hitches.1 = s.hitches.1.max(ms);
+        if ms > s.hitches.1 {
+            s.hitches.1 = ms;
+            s.hitches.2 = median;
+        }
     }
     if s.hitches.0 > 0 && now - s.hitch_said >= HITCH_EVERY {
         tracing::warn!(
-            "HITCH at {minutes:.1} min: {} frames over {:.0} ms in the last {:.0} s, the longest {:.0} ms (frames around them {median:.0} ms); {}",
+            "HITCH at {minutes:.1} min: {} frames over {HITCH_TIMES:.0}x the ones before them (and {HITCH_MIN_MS:.0} ms) in the last {:.0} s, the longest {:.0} ms (frames before it {:.0} ms); {}",
             s.hitches.0,
-            (4.0 * median).max(100.0),
             (now - s.hitch_said).as_secs_f64(),
             s.hitches.1,
+            s.hitches.2,
             memory()
         );
-        s.hitches = (0, 0.0);
+        s.hitches = (0, 0.0, 0.0);
         s.hitch_said = now;
-    }
-    // Drops: the last 5 s against the half minute before.
+    }    // Drops: the last 5 s against the half minute before.
     s.window.0 += 1;
     let span = now - s.window.1;
     if span >= Duration::from_secs(5) {
@@ -215,6 +257,12 @@ mod tests {
         assert_eq!(median, 20.0);
         assert!((fps - 4.0 * 1000.0 / 460.0).abs() < 1e-6);
         assert_eq!(recent(&VecDeque::new(), 1000.0), (0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn a_hitch_is_four_times_and_at_least_150_ms() {
+        assert_eq!(hitch_over(26.0), 150.0);
+        assert_eq!(hitch_over(100.0), 400.0);
     }
 
     #[test]

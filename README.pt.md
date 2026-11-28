@@ -91,8 +91,9 @@ O motor com que todas as placas jogam por defeito. Medido no portátil do autor 
 O plano: [docs/PLANO.md](docs/PLANO.md). Um frame no mundo demora aqui 104-120 ms, dos quais 68-77 a preparar no
 processador e 0 à espera da placa, por isso as próximas releases vão atrás disso: mudanças medidas noutros forks e em
 pull requests do VIctory original, uma de cada vez, cada uma desligada até os relatórios dos jogadores a confirmarem
-(`scripts/report-stats.py`). A primeira já entrou: `VICTORY_BURY_ASIDE=1` (desligada por defeito), que passa a uma
-thread própria a libertação dos objetos que o relay libertava durante a aterragem (B1 no plano); está a ser medida.
+(`scripts/report-stats.py`). A primeira já foi medida: `VICTORY_BURY_ASIDE=1`, que passa a uma thread própria a
+libertação dos objetos que o relay libertava durante a aterragem (B1 no plano). Aqui piorou (19-22 fps sem ela, 6-19
+com ela, com frames de 300-500 ms), por isso fica desligada; a seguir vem a #3585.
 
 **Viste um problema a jogar? Marca-o:** teclado numérico 1-9 (ou Alt + 1-9) põe o momento no log do jogo: 1 algo
 desenhado mal, 2 texturas, 3 FPS baixos perto de pessoas, 4 engasgos, 5 FPS baixos a conduzir ou voar, 6 som,

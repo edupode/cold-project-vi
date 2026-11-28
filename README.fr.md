@@ -93,8 +93,9 @@ Le moteur avec lequel toutes les cartes jouent par défaut. Mesuré sur le porta
 Le plan, en portugais : [docs/PLANO.md](docs/PLANO.md). Une image du monde prend ici 104-120 ms, dont 68-77 à
 préparer sur le processeur et 0 à attendre la carte : les prochaines versions s'attaquent à cela, avec des changements
 mesurés dans d'autres forks et des pull requests du VIctory d'origine, un à la fois, chacun désactivé jusqu'à ce que
-les rapports des joueurs le confirment (`scripts/report-stats.py`). Le premier est arrivé : `VICTORY_BURY_ASIDE=1` (désactivé par défaut), qui confie à un
-thread à lui la libération des objets que le relais libérait pendant l'atterrissage (B1 du plan) ; en cours de mesure.
+les rapports des joueurs le confirment (`scripts/report-stats.py`). Le premier a été mesuré : `VICTORY_BURY_ASIDE=1`, qui confie à un thread à lui la
+libération des objets que le relais libérait pendant l'atterrissage (B1 du plan). Ici il a empiré les choses
+(19-22 fps sans lui, 6-19 avec, et des images de 300-500 ms) : il reste désactivé ; ensuite vient la #3585.
 
 **Un problème en jouant ? Marque-le :** pavé numérique 1-9 (ou Alt + 1-9) met le moment dans le log du jeu : 1 quelque
 chose de mal dessiné, 2 textures, 3 FPS bas près des gens, 4 saccades, 5 FPS bas en conduisant ou en volant, 6 son,

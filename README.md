@@ -116,8 +116,9 @@ The engine every card plays with by default. Measured on the author's RTX 5070 T
 The plan, in Portuguese: [docs/PLANO.md](docs/PLANO.md). A world frame here takes 104-120 ms, 68-77 of them preparing
 on the processor and 0 waiting for the card, so the next releases go after that: changes measured in other forks and
 upstream pull requests, one at a time, each off by default until the players' reports confirm it
-(`scripts/report-stats.py`). First in: `VICTORY_BURY_ASIDE=1` (off by default), which lets a thread of its own drop
-the host objects the relay used to drop while landing (B1 in the plan); being measured.
+(`scripts/report-stats.py`). First measured: `VICTORY_BURY_ASIDE=1`, which lets a thread of its own drop the host
+objects the relay used to drop while landing (B1 in the plan). Here it made things worse (19-22 fps without it, 6-19
+with it, with 300-500 ms frames), so it stays off; next is #3585.
 
 **Saw a problem while playing? Mark it:** Numpad 1-9 (or Alt + 1-9) puts the moment into the game's log: 1 something
 drawn wrong, 2 textures, 3 low FPS near people, 4 stutter, 5 low FPS driving or flying, 6 sound, 7 controls, 8 stuck or a

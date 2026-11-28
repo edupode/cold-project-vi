@@ -113,7 +113,7 @@ namespace VIctoryLauncher
             if (string.IsNullOrEmpty(log) || !File.Exists(log)) return "";
             var kinds = new SortedDictionary<string, int>();
             var marks = new List<string>();
-            int hitches = 0, drops = 0;
+            int hitches = 0, hitchFrames = 0, drops = 0;
             double longest = 0;
             try
             {
@@ -135,6 +135,9 @@ namespace VIctoryLauncher
                         if (line.Contains("HITCH at "))
                         {
                             hitches++;
+                            var fm = System.Text.RegularExpressions.Regex.Match(line, @": (\d+) frames over");
+                            int frames;
+                            hitchFrames += fm.Success && int.TryParse(fm.Groups[1].Value, out frames) ? frames : 1;
                             var m = System.Text.RegularExpressions.Regex.Match(line, @"the longest (\d+) ms");
                             double ms;
                             if (m.Success && double.TryParse(m.Groups[1].Value, out ms) && ms > longest) longest = ms;
@@ -146,7 +149,7 @@ namespace VIctoryLauncher
             catch (Exception) { return ""; }
             var sb = new StringBuilder();
             sb.AppendLine("Problem marks: " + (kinds.Count == 0 ? "none" : string.Join(", ", kinds.Select(kv => kv.Key + " x" + kv.Value).ToArray())));
-            sb.AppendLine(string.Format("Hitches: {0} lines (the longest {1:0} ms)   FPS drops: {2}", hitches, longest, drops));
+            sb.AppendLine(string.Format("Hitches: {0} frames in {1} lines (the longest {2:0} ms)   FPS drops: {3}", hitchFrames, hitches, longest, drops));
             foreach (var m in marks.Skip(Math.Max(0, marks.Count - 20))) sb.AppendLine("  " + m);
             return sb.ToString();
         }
