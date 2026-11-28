@@ -1261,11 +1261,11 @@ namespace VIctoryLauncher
             var page = Page();
             const int X = 40, W = 900;
             int y = PageTop(page, L("Controls", "Controlos", "Commandes"), L("Controls", "Controlos", "Commandes"), L("by what you do.", "pelo que fazes.", "selon l'action."), null);
-            page.Controls.Add(Small(L("Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this.",
-                                      "Teclado e rato, e o botao do comando Xbox de cada um. Um comando ligado ao PC substitui tudo isto.",
-                                      "Clavier et souris, et le bouton de la manette Xbox pour chacun. Une manette branchée au PC remplace tout cela."), X, y, W) );
-            page.Controls[page.Controls.Count - 1].Height = 38;
-            y += 40;
+            page.Controls.Add(Small(L("Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this. Saw a problem while playing? Press its number (Numpad, or Alt + the number) at that moment: it is marked in the game's log, and the reports show us the worst places (at the bottom of this page).",
+                                      "Teclado e rato, e o botao do comando Xbox de cada um. Um comando ligado ao PC substitui tudo isto. Viste um problema a jogar? Carrega no numero dele (teclado numerico, ou Alt + o numero) nesse momento: fica marcado no log do jogo, e os relatorios mostram-nos as piores partes (no fim desta pagina).",
+                                      "Clavier et souris, et le bouton de la manette Xbox pour chacun. Une manette branchée au PC remplace tout cela. Un problème en jouant ? Appuie sur son numéro (pavé numérique, ou Alt + le numéro) à ce moment-là : il est marqué dans le log du jeu, et les rapports nous montrent les pires endroits (en bas de cette page)."), X, y, W) );
+            page.Controls[page.Controls.Count - 1].Height = 58;
+            y += 62;
             Func<string, string, string, string[]> row = (what, key, pad) => new[] { what, key, pad };
             var groups = new List<Tuple<string, string[][]>> {
                 Tuple.Create(L("On foot", "A pe", "À pied"), new[] {
@@ -1313,6 +1313,19 @@ namespace VIctoryLauncher
                     row(L("Release the mouse", "Soltar o rato", "Libérer la souris"), "Alt / F1", "-"),
                     row(L("Show or hide the overlay (FPS, memory)", "Mostrar ou esconder o overlay (FPS, memoria)", "Afficher ou masquer l'overlay (FPS, mémoire)"), "F3", "-"),
                     row(L("Record a frame (recording mode)", "Gravar um frame (modo de gravacao)", "Enregistrer une image (mode enregistrement)"), "F9", "-"),
+                }),
+                // The problem marks (victory-gpu host/marks.rs): each one goes into the game's log with the moment's
+                // numbers, and the reports count them by kind, so the worst places of the game show.
+                Tuple.Create(L("Saw a problem? Mark it (it goes into the game's log)", "Viste um problema? Marca-o (fica no log do jogo)", "Un problème ? Marque-le (il va dans le log du jeu)"), new[] {
+                    row(L("1 · Something drawn wrong: stretched bodies, wrong colours, flicker", "1 · Algo desenhado mal: corpos esticados, cores erradas, piscar", "1 · Quelque chose de mal dessiné : corps étirés, couleurs fausses, scintillement"), "Num 1 / Alt+1", "-"),
+                    row(L("2 · Black, missing or blurry textures", "2 · Texturas pretas, em falta ou desfocadas", "2 · Textures noires, manquantes ou floues"), "Num 2 / Alt+2", "-"),
+                    row(L("3 · Low FPS near people, crowds or fights", "3 · FPS baixos perto de pessoas, multidoes ou lutas", "3 · FPS bas près des gens, des foules ou des combats"), "Num 3 / Alt+3", "-"),
+                    row(L("4 · Stutter, short freezes, lag", "4 · Engasgos, paragens curtas, lag", "4 · Saccades, petits gels, lag"), "Num 4 / Alt+4", "-"),
+                    row(L("5 · Low FPS driving, flying or moving fast", "5 · FPS baixos a conduzir, voar ou andar depressa", "5 · FPS bas en conduisant, en volant ou en allant vite"), "Num 5 / Alt+5", "-"),
+                    row(L("6 · Sound cut, missing or crackling", "6 · Som cortado, em falta ou a estalar", "6 · Son coupé, absent ou qui grésille"), "Num 6 / Alt+6", "-"),
+                    row(L("7 · Keys, mouse or pad not answering", "7 · Teclas, rato ou comando nao respondem", "7 · Touches, souris ou manette qui ne répondent pas"), "Num 7 / Alt+7", "-"),
+                    row(L("8 · Stuck, odd physics, a mission that fails", "8 · Preso, fisica estranha, missao que falha", "8 · Bloqué, physique bizarre, mission qui échoue"), "Num 8 / Alt+8", "-"),
+                    row(L("9 · Anything else, or the game seems about to close", "9 · Outra coisa, ou o jogo parece prestes a fechar", "9 · Autre chose, ou le jeu semble sur le point de fermer"), "Num 9 / Alt+9", "-"),
                 }),
             };
             foreach (var g in groups)

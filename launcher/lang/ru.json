@@ -628,7 +628,6 @@
  "Smooth Motion is on for victory.exe (driver profile).": "Smooth Motion включён для victory.exe (профиль драйвера).",
  "Smooth Motion is off for victory.exe.": "Smooth Motion выключен для victory.exe.",
  "by what you do.": "по тому, что ты делаешь.",
- "Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this.": "Клавиатура и мышь, и кнопка контроллера Xbox для каждого действия. Контроллер, подключённый к ПК, заменяет всё это.",
  "On foot": "Пешком",
  "Move": "Двигаться",
  "Left stick": "Левый стик",
@@ -775,5 +774,16 @@
  "Starting the game...": "Запуск игры...",
  "What's new in v{0}": "Что нового в v{0}",
  "Got it": "Понятно",
- "All releases": "Все релизы"
+ "All releases": "Все релизы",
+ "Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this. Saw a problem while playing? Press its number (Numpad, or Alt + the number) at that moment: it is marked in the game's log, and the reports show us the worst places (at the bottom of this page).": "Клавиатура и мышь, и кнопка контроллера Xbox для каждого действия. Контроллер, подключённый к ПК, заменяет всё это. Увидел проблему во время игры? Нажми её номер (цифровой блок или Alt + цифра) в этот момент: она отметится в логе игры, а отчёты покажут нам худшие места (внизу этой страницы).",
+ "Saw a problem? Mark it (it goes into the game's log)": "Увидел проблему? Отметь её (она попадёт в лог игры)",
+ "1 · Something drawn wrong: stretched bodies, wrong colours, flicker": "1 · Что-то нарисовано неправильно: растянутые тела, не те цвета, мерцание",
+ "2 · Black, missing or blurry textures": "2 · Чёрные, пропавшие или размытые текстуры",
+ "3 · Low FPS near people, crowds or fights": "3 · Низкий FPS рядом с людьми, толпами или драками",
+ "4 · Stutter, short freezes, lag": "4 · Рывки, короткие зависания, лаги",
+ "5 · Low FPS driving, flying or moving fast": "5 · Низкий FPS за рулём, в полёте или на скорости",
+ "6 · Sound cut, missing or crackling": "6 · Звук прерывается, пропадает или трещит",
+ "7 · Keys, mouse or pad not answering": "7 · Клавиши, мышь или контроллер не отвечают",
+ "8 · Stuck, odd physics, a mission that fails": "8 · Застрял, странная физика, миссия проваливается",
+ "9 · Anything else, or the game seems about to close": "9 · Что-то другое, или игра вот-вот закроется"
 }

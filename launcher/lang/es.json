@@ -604,7 +604,6 @@
  "Smooth Motion is on for victory.exe (driver profile).": "Smooth Motion está activado para victory.exe (perfil del driver).",
  "Smooth Motion is off for victory.exe.": "Smooth Motion está desactivado para victory.exe.",
  "by what you do.": "según lo que hagas.",
- "Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this.": "Teclado y ratón, y el botón del mando de Xbox para cada cosa. Un mando conectado al PC sustituye todo esto.",
  "On foot": "A pie",
  "Move": "Moverse",
  "Left stick": "Stick izquierdo",
@@ -775,5 +774,16 @@
  "The resolution the game draws its picture for; the preset's scale applies on top (Beefy PC mode at 4K draws 2560x1440 and upscales). Higher output: a sharper picture, more video memory for the screen's images (about +0.5 GB at 2K, +1.5 GB at 4K) and more work for the card; the CPU stays the limit on strong cards. 2K and 4K are new: tell us on Discord how they run.": "La resolución para la que el juego dibuja su imagen; la escala del preset se aplica encima (Beefy PC mode en 4K dibuja a 2560x1440 y escala). Más salida: una imagen más nítida, más memoria de vídeo para las imágenes de la pantalla (unos +0,5 GB en 2K, +1,5 GB en 4K) y más trabajo para la tarjeta; en tarjetas potentes el límite sigue siendo la CPU. 2K y 4K son nuevas: cuéntanos en Discord cómo van.",
  "◇ Lighter game detail": "◇ Detalle del juego más ligero",
  "More FPS: smaller shadows, less detail far away": "Más FPS: sombras más pequeñas, menos detalle a lo lejos",
- "Experimental: the game's own settings made lighter before it starts (from VIctory-Hydra): shadows at 1280 px instead of 2048, objects switch to their simpler versions nearer, and fewer small objects far away. More FPS for a little less detail in the distance. Ultra Low and Modest PC have it already; the weak presets ignore this box.": "Experimental: los ajustes del propio juego más ligeros antes de arrancar (de VIctory-Hydra): sombras a 1280 px en vez de 2048, los objetos pasan antes a sus versiones simples, y menos objetos pequeños a lo lejos. Más FPS a cambio de un poco menos de detalle a distancia. Ultra bajo y PC modesto ya lo tienen; los presets ligeros ignoran esta casilla."
+ "Experimental: the game's own settings made lighter before it starts (from VIctory-Hydra): shadows at 1280 px instead of 2048, objects switch to their simpler versions nearer, and fewer small objects far away. More FPS for a little less detail in the distance. Ultra Low and Modest PC have it already; the weak presets ignore this box.": "Experimental: los ajustes del propio juego más ligeros antes de arrancar (de VIctory-Hydra): sombras a 1280 px en vez de 2048, los objetos pasan antes a sus versiones simples, y menos objetos pequeños a lo lejos. Más FPS a cambio de un poco menos de detalle a distancia. Ultra bajo y PC modesto ya lo tienen; los presets ligeros ignoran esta casilla.",
+ "Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this. Saw a problem while playing? Press its number (Numpad, or Alt + the number) at that moment: it is marked in the game's log, and the reports show us the worst places (at the bottom of this page).": "Teclado y ratón, y el botón del mando de Xbox para cada cosa. Un mando conectado al PC sustituye todo esto. ¿Viste un problema jugando? Pulsa su número (teclado numérico, o Alt + el número) en ese momento: queda marcado en el log del juego, y los reportes nos muestran las peores partes (al final de esta página).",
+ "Saw a problem? Mark it (it goes into the game's log)": "¿Viste un problema? Márcalo (queda en el log del juego)",
+ "1 · Something drawn wrong: stretched bodies, wrong colours, flicker": "1 · Algo dibujado mal: cuerpos estirados, colores erróneos, parpadeo",
+ "2 · Black, missing or blurry textures": "2 · Texturas negras, ausentes o borrosas",
+ "3 · Low FPS near people, crowds or fights": "3 · FPS bajos cerca de gente, multitudes o peleas",
+ "4 · Stutter, short freezes, lag": "4 · Tirones, congelaciones cortas, lag",
+ "5 · Low FPS driving, flying or moving fast": "5 · FPS bajos conduciendo, volando o yendo rápido",
+ "6 · Sound cut, missing or crackling": "6 · Sonido cortado, ausente o con chasquidos",
+ "7 · Keys, mouse or pad not answering": "7 · Teclas, ratón o mando que no responden",
+ "8 · Stuck, odd physics, a mission that fails": "8 · Atascado, física rara, una misión que falla",
+ "9 · Anything else, or the game seems about to close": "9 · Otra cosa, o el juego parece a punto de cerrarse"
 }

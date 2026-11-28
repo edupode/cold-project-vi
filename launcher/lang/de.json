@@ -628,7 +628,6 @@
  "Smooth Motion is on for victory.exe (driver profile).": "Smooth Motion ist für victory.exe an (Treiberprofil).",
  "Smooth Motion is off for victory.exe.": "Smooth Motion ist für victory.exe aus.",
  "by what you do.": "nach dem, was du tust.",
- "Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this.": "Tastatur und Maus, und die Xbox-Controller-Taste für jede Aktion. Ein mit dem PC verbundener Controller ersetzt all das.",
  "On foot": "Zu Fuß",
  "Move": "Bewegen",
  "Left stick": "Linker Stick",
@@ -775,5 +774,16 @@
  "Starting the game...": "Starte das Spiel...",
  "What's new in v{0}": "Neu in v{0}",
  "Got it": "Verstanden",
- "All releases": "Alle Releases"
+ "All releases": "Alle Releases",
+ "Keyboard and mouse, and the Xbox controller button for each. A controller connected to the PC replaces all of this. Saw a problem while playing? Press its number (Numpad, or Alt + the number) at that moment: it is marked in the game's log, and the reports show us the worst places (at the bottom of this page).": "Tastatur und Maus, und die Xbox-Controller-Taste für jede Aktion. Ein mit dem PC verbundener Controller ersetzt all das. Beim Spielen ein Problem gesehen? Drück in dem Moment seine Nummer (Ziffernblock oder Alt + Ziffer): es wird im Log des Spiels markiert, und die Berichte zeigen uns die schlimmsten Stellen (unten auf dieser Seite).",
+ "Saw a problem? Mark it (it goes into the game's log)": "Ein Problem gesehen? Markiere es (es kommt ins Log des Spiels)",
+ "1 · Something drawn wrong: stretched bodies, wrong colours, flicker": "1 · Etwas falsch gezeichnet: gestreckte Körper, falsche Farben, Flackern",
+ "2 · Black, missing or blurry textures": "2 · Schwarze, fehlende oder verschwommene Texturen",
+ "3 · Low FPS near people, crowds or fights": "3 · Wenige FPS bei Menschen, Menschenmengen oder Kämpfen",
+ "4 · Stutter, short freezes, lag": "4 · Ruckler, kurze Hänger, Lag",
+ "5 · Low FPS driving, flying or moving fast": "5 · Wenige FPS beim Fahren, Fliegen oder schnellen Bewegen",
+ "6 · Sound cut, missing or crackling": "6 · Ton abgehackt, fehlt oder knackt",
+ "7 · Keys, mouse or pad not answering": "7 · Tasten, Maus oder Controller reagieren nicht",
+ "8 · Stuck, odd physics, a mission that fails": "8 · Festgesteckt, seltsame Physik, eine Mission schlägt fehl",
+ "9 · Anything else, or the game seems about to close": "9 · Etwas anderes, oder das Spiel scheint gleich abzustürzen"
 }

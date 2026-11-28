@@ -94,6 +94,13 @@ def read(path, row):
         "excs": dict(excs.most_common(3)),
     }
     r["vendor"] = vendor(r["gpu"])
+    # The player's problem marks (Numpad/Alt + 1-9) and the engine's own HITCH / FPS DROP lines (victory-gpu
+    # host/marks.rs), from the summary (whole) or else from the log (its end only).
+    marks = re.findall(r"MARK (\d) ([A-Z ]+?) at ([\d.]+) min: ([\d.]+) fps", s + "\n" + log)
+    r["marks"] = sorted({(int(k), name, float(m), float(fps)) for k, name, m, fps in marks})
+    pm = re.search(r"Hitches: (\d+) lines \(the longest (\d+) ms\)\s+FPS drops: (\d+)", s)
+    r["hitches"], r["longest_hitch"], r["drops"] = (int(pm.group(1)), int(pm.group(2)), int(pm.group(3))) if pm else (
+        len(re.findall(r"HITCH at ", log)), 0, len(re.findall(r"FPS DROP at ", log)))
     # Frame rate in play: the engine's 5-second lines after the first 90 s.
     lines = FPS.findall(log)
     if lines:
@@ -158,6 +165,20 @@ def summary(rs):
     for c, group in sorted(causes.items(), key=lambda kv: -len(kv[1])):
         cards = collections.Counter(r["gpu"] for r in group).most_common(3)
         out.append(f"| {c} | {len(group)} | {len({r['vi'] for r in group})} | " + "; ".join(f"{g or '?'} ×{n}" for g, n in cards) + " |")
+    marked = [(r, m) for r in rs for m in r.get("marks", [])]
+    if marked:
+        out.append("\n### Problems the players marked (Numpad/Alt + 1-9)\n\n| kind | marks | players | median fps at the mark | presets |\n|---|---|---|---|---|")
+        kinds = collections.defaultdict(list)
+        for r, m in marked:
+            kinds[f"{m[0]} {m[1]}"].append((r, m))
+        for k, group in sorted(kinds.items(), key=lambda kv: -len(kv[1])):
+            presets = collections.Counter(r["preset"] for r, _ in group).most_common(3)
+            out.append(f"| {k} | {len(group)} | {len({r['vi'] for r, _ in group})} | {statistics.median(m[3] for _, m in group):.1f} | "
+                       + ", ".join(f"{p} x{n}" for p, n in presets) + " |")
+    hours = sum((r["played"] or 0) for r in rs) / 60
+    if hours > 0:
+        out.append(f"\nHitches (frames far longer than those around them, at most one line in 5 s): {sum(r.get('hitches', 0) for r in rs) / hours:.1f} "
+                   f"lines an hour; FPS drops (the last 5 s under 60 % of the half minute before): {sum(r.get('drops', 0) for r in rs) / hours:.1f} an hour.")
     slow = [r for r in rs if r.get("dropped") and r["dropped"] > 50]
     if slow:
         out.append(f"\n{len(slow)} games drew without a pipeline for more than 50 draws a frame after the first 90 s "

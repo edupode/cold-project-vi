@@ -119,6 +119,11 @@ upstream pull requests, one at a time, each off by default until the players' re
 (`scripts/report-stats.py`). First in: `VICTORY_BURY_ASIDE=1` (off by default), which lets a thread of its own drop
 the host objects the relay used to drop while landing (B1 in the plan); being measured.
 
+**Saw a problem while playing? Mark it:** Numpad 1-9 (or Alt + 1-9) puts the moment into the game's log: 1 something
+drawn wrong, 2 textures, 3 low FPS near people, 4 stutter, 5 low FPS driving or flying, 6 sound, 7 controls, 8 stuck or a
+mission that fails, 9 anything else. The engine also notes hitches and FPS drops by itself, and the reports count it
+all by kind (the launcher's Controls page lists the keys).
+
 ## Progress on PortWatch VI's scale
 
 **About 79 %** (27/11/2026: the author's RTX 5070 Ti laptop, and players reporting a steady 30 fps). PortWatch's scale: up to 50 %,

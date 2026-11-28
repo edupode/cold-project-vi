@@ -7,6 +7,7 @@
 // the same private report box as "Send errors" (POST /v1/report, kind "session"), read by edupode and the
 // project's team (server/hardware-worker/src/team.js).
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
@@ -105,6 +106,51 @@ namespace VIctoryLauncher
                    : L("Game logs are not sent.", "As logs do jogo nao sao enviadas.", "Les logs du jeu ne sont pas envoyés."));
         }
 
+        // The player's problem marks (Numpad/Alt + 1-9) and the engine's own HITCH and FPS DROP lines, from the whole
+        // log: the summary always arrives whole, while the log sent is only its end (victory-gpu host/marks.rs).
+        static string ProblemMarks(string log)
+        {
+            if (string.IsNullOrEmpty(log) || !File.Exists(log)) return "";
+            var kinds = new SortedDictionary<string, int>();
+            var marks = new List<string>();
+            int hitches = 0, drops = 0;
+            double longest = 0;
+            try
+            {
+                using (var f = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var r = new StreamReader(f))
+                {
+                    string line;
+                    while ((line = r.ReadLine()) != null)
+                    {
+                        int at = line.IndexOf("MARK ", StringComparison.Ordinal);
+                        if (at >= 0 && line.Contains("a player's mark"))
+                        {
+                            var text = System.Text.RegularExpressions.Regex.Replace(line.Substring(at), @"\x1b\[[0-9;]*m", "");
+                            var m = System.Text.RegularExpressions.Regex.Match(text, @"^MARK (\d) ([A-Z ]+?) at");
+                            if (m.Success) { var k = m.Groups[1].Value + " " + m.Groups[2].Value; int n; kinds.TryGetValue(k, out n); kinds[k] = n + 1; }
+                            marks.Add(text.Length > 200 ? text.Substring(0, 200) : text);
+                            continue;
+                        }
+                        if (line.Contains("HITCH at "))
+                        {
+                            hitches++;
+                            var m = System.Text.RegularExpressions.Regex.Match(line, @"the longest (\d+) ms");
+                            double ms;
+                            if (m.Success && double.TryParse(m.Groups[1].Value, out ms) && ms > longest) longest = ms;
+                        }
+                        else if (line.Contains("FPS DROP at ")) drops++;
+                    }
+                }
+            }
+            catch (Exception) { return ""; }
+            var sb = new StringBuilder();
+            sb.AppendLine("Problem marks: " + (kinds.Count == 0 ? "none" : string.Join(", ", kinds.Select(kv => kv.Key + " x" + kv.Value).ToArray())));
+            sb.AppendLine(string.Format("Hitches: {0} lines (the longest {1:0} ms)   FPS drops: {2}", hitches, longest, drops));
+            foreach (var m in marks.Skip(Math.Max(0, marks.Count - 20))) sb.AppendLine("  " + m);
+            return sb.ToString();
+        }
+
         OptionCard logsBox;
 
         // The switch on Hardware & ID, under hardware sharing.
@@ -123,7 +169,7 @@ namespace VIctoryLauncher
         {
             if (!SessionLogsOn) return;
             string summary;
-            try { summary = SessionSummary(code, started, ended); }
+            try { summary = SessionSummary(code, started, ended, log); }
             catch (Exception) { return; }
             var hwNow = hw;
             new Thread(() => {
@@ -179,7 +225,7 @@ namespace VIctoryLauncher
         }
 
         // The same first lines as an error report, and how the game went.
-        string SessionSummary(int code, DateTime started, DateTime ended)
+        string SessionSummary(int code, DateTime started, DateTime ended, string log = null)
         {
             var h = hw ?? ReadHardware();
             string options = "", folder = null;
@@ -199,6 +245,7 @@ namespace VIctoryLauncher
             sb.AppendLine(ExeLine());
             sb.AppendLine(GameFolderListing(folder, false));
             if (dumpWarning != null) sb.AppendLine("Incomplete game: " + dumpWarning);
+            sb.Append(ProblemMarks(log));
             sb.AppendLine(string.Format("Played: {0:0.0} min   Ended: {1}", (ended - started).TotalMinutes, code == 0 ? "normally (code 0)" : "with an error (code " + code + ")"));
             return Scrub(sb.ToString()) + "\r\nOptions:\r\n" + Scrub(options);
         }

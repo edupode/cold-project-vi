@@ -96,6 +96,11 @@ mesurés dans d'autres forks et des pull requests du VIctory d'origine, un à la
 les rapports des joueurs le confirment (`scripts/report-stats.py`). Le premier est arrivé : `VICTORY_BURY_ASIDE=1` (désactivé par défaut), qui confie à un
 thread à lui la libération des objets que le relais libérait pendant l'atterrissage (B1 du plan) ; en cours de mesure.
 
+**Un problème en jouant ? Marque-le :** pavé numérique 1-9 (ou Alt + 1-9) met le moment dans le log du jeu : 1 quelque
+chose de mal dessiné, 2 textures, 3 FPS bas près des gens, 4 saccades, 5 FPS bas en conduisant ou en volant, 6 son,
+7 commandes, 8 bloqué ou mission qui échoue, 9 autre chose. Le moteur note aussi tout seul les saccades et les chutes de
+FPS, et les rapports comptent tout par type (la page Commandes du lanceur liste les touches).
+
 ## Progression sur l'échelle de PortWatch VI
 
 **Environ 79 %** (27/11/2026 : le portable de l'auteur, RTX 5070 Ti, et des joueurs à 30 fps stables). L'échelle de PortWatch :

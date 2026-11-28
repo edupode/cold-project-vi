@@ -94,6 +94,11 @@ pull requests do VIctory original, uma de cada vez, cada uma desligada até os r
 (`scripts/report-stats.py`). A primeira já entrou: `VICTORY_BURY_ASIDE=1` (desligada por defeito), que passa a uma
 thread própria a libertação dos objetos que o relay libertava durante a aterragem (B1 no plano); está a ser medida.
 
+**Viste um problema a jogar? Marca-o:** teclado numérico 1-9 (ou Alt + 1-9) põe o momento no log do jogo: 1 algo
+desenhado mal, 2 texturas, 3 FPS baixos perto de pessoas, 4 engasgos, 5 FPS baixos a conduzir ou voar, 6 som,
+7 controlos, 8 preso ou missão que falha, 9 outra coisa. O motor também anota sozinho os engasgos e as quedas de FPS,
+e os relatórios contam tudo por tipo (a página Controlos do launcher tem as teclas).
+
 ## Progresso na escala do PortWatch VI
 
 **Cerca de 79 %** (27/11/2026: o portátil do autor, RTX 5070 Ti, e jogadores com 30 fps estáveis). A escala do PortWatch: até 50 %,
