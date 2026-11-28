@@ -35,6 +35,17 @@ const SPARE_KEPT: usize = 64;
 /// The same of blocks of staging buffers, which are the PC's memory: run
 /// crash-1 held 5.2 GB of them.
 const STAGING_KEPT: usize = 8;
+
+/// The empty staging blocks kept ([`STAGING_KEPT`] unless
+/// `VICTORY_STAGING_KEPT` says another number): each is 64 MB of the PC's
+/// memory, so 2 on a 16 GB PC frees about 384 MB that waited for an upload
+/// (WASDeKeys/victory-low-end-pc, measured against 0x8007000E on 16 GB).
+fn staging_kept() -> usize {
+    static KEPT: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *KEPT.get_or_init(|| {
+        std::env::var("VICTORY_STAGING_KEPT").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(STAGING_KEPT)
+    })
+}
 /// How many are kept now.
 static SPARES: AtomicUsize = AtomicUsize::new(SPARE);
 
@@ -371,7 +382,7 @@ struct Upload(ID3D12Resource, *mut u8);
 unsafe impl Send for Upload {}
 
 static TEXTURES: Mutex<Pool<ID3D12Heap>> = Mutex::new(Pool::new(SPARE_KEPT));
-static STAGING: Mutex<Pool<Upload>> = Mutex::new(Pool::new(STAGING_KEPT));
+static STAGING: std::sync::LazyLock<Mutex<Pool<Upload>>> = std::sync::LazyLock::new(|| Mutex::new(Pool::new(staging_kept())));
 
 /// Lets go of every empty block now (up to [`SPARE_KEPT`] of the card's and
 /// [`STAGING_KEPT`] of the PC's memory kept for later), for an allocation
@@ -432,7 +443,7 @@ pub(crate) fn texture_room() -> u64 {
 /// For the memory line: blocks of textures and of staging buffers, in MiB.
 #[cfg(feature = "diagnostics")]
 pub(crate) fn memory() -> [u64; 2] {
-    [lock(&TEXTURES).blocks() as u64 * (BLOCK >> 20), lock(&STAGING).blocks() as u64 * (BLOCK >> 20)]
+    [lock(&TEXTURES).blocks() as u64 * (BLOCK >> 20), lock(&*STAGING).blocks() as u64 * (BLOCK >> 20)]
 }
 
 /// Part of a block of mapped upload memory, back in the pool when dropped.
@@ -440,7 +451,7 @@ pub(crate) struct StagingPiece(Piece);
 
 impl Drop for StagingPiece {
     fn drop(&mut self) {
-        lock(&STAGING).give(self.0, now());
+        lock(&*STAGING).give(self.0, now());
     }
 }
 
@@ -452,7 +463,7 @@ pub(crate) fn staging(host: &crate::host::Host, bytes: u64) -> Option<(StagingPi
     }
     // Copies from a buffer begin at multiples of 512.
     let bytes = bytes.next_multiple_of(512);
-    let (piece, memory, again) = lock(&STAGING).take(bytes, 512, now(), || {
+    let (piece, memory, again) = lock(&*STAGING).take(bytes, 512, now(), || {
         // Only gate speculative bindless prefetch on staging-pool growth
         // headroom; table-bound textures and decoration bakes are sampled
         // immediately and would otherwise read uninitialized/reused VRAM.
@@ -972,7 +983,7 @@ mod tests {
             assert!(at.is_multiple_of(512));
             std::ptr::write_bytes(data, 0xAB, 4096);
             drop(piece);
-            lock(&STAGING).rested(u64::MAX);
+            lock(&*STAGING).rested(u64::MAX);
             let (_piece, _, _, data) = staging(host, 4096).unwrap();
             assert!((0..4096).all(|i| *data.add(i) == 0));
             // SAFETY: plain query.

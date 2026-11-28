@@ -1396,6 +1396,16 @@ impl Drop for HostList {
 /// The most preludes [`PRELUDES`] keeps.
 const PRELUDES_KEPT: usize = 256;
 
+/// [`PRELUDES_KEPT`] unless `VICTORY_MAX_PRELUDES` says another number (each
+/// idle prelude holds a few MB of the PC's memory; 16 to 32 on 16 GB PCs,
+/// WASDeKeys/victory-low-end-pc).
+fn preludes_kept() -> usize {
+    static KEPT: OnceLock<usize> = OnceLock::new();
+    *KEPT.get_or_init(|| {
+        std::env::var("VICTORY_MAX_PRELUDES").ok().and_then(|v| v.trim().parse().ok()).unwrap_or(PRELUDES_KEPT)
+    })
+}
+
 fn prelude_pool() -> bool {
     static ON: OnceLock<bool> = OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("VICTORY_PRELUDE_POOL").is_none_or(|v| v != "0"))
@@ -6970,7 +6980,7 @@ impl HostList {
             return;
         };
         let mut kept = PRELUDES.lock().unwrap_or_else(|e| e.into_inner());
-        if kept.len() < PRELUDES_KEPT {
+        if kept.len() < preludes_kept() {
             kept.push(prelude);
         } else {
             drop(kept);
