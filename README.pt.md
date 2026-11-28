@@ -46,6 +46,8 @@ e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
 - **F1 no jogo:** menu de definições redesenhado (secções, o que faz cada opção); o que mudares aplica-se no JOGAR seguinte.
   O DLSS e o multiplicador da geração de frames já se mudam no F1 mesmo com o jogo aberto pelo launcher (só o motor de
   geração de frames e o limite de FPS ficam com o launcher). **F3:** o painel de estatísticas, em todos os builds.
+- **Placas de 8 GB (0.3.18):** sem texturas novas enquanto a placa passa o orçamento de memória; o excesso enchia a
+  memória do PC e crashava PCs de 8 GB / 16 GB de RAM ao fim de poucos minutos.
 - **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
 - **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
   `victory.exe` novo aquece e arranca de novo uma vez, sozinho.

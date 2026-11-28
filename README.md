@@ -71,6 +71,8 @@ included.**
 - **F1 in the game:** a redesigned settings menu (sections, what each setting does); what you change there applies at the next
   PLAY. DLSS and the frame generation multiplier can now be changed in F1 even when the launcher started the game (only
   the frame generation engine and the frame cap stay the launcher's). **F3:** the stats panel, in every build.
+- **8 GB cards (0.3.18):** no new textures while the card is past its memory budget; the overflow filled the PC's memory
+  and crashed 8 GB / 16 GB RAM PCs a few minutes in.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.

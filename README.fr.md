@@ -47,6 +47,8 @@ du jeu n'est inclus.**
 - **F1 en jeu :** menu de réglages redessiné (sections, ce que fait chaque réglage) ; tes changements s'appliquent au JOUER suivant.
   Le DLSS et le multiplicateur de génération d'images se changent maintenant dans F1 même quand le launcher a lancé le jeu
   (seuls le moteur de génération d'images et la limite d'images restent au launcher). **F3 :** le panneau de statistiques, dans tous les builds.
+- **Cartes de 8 Go (0.3.18) :** plus de nouvelles textures quand la carte dépasse son budget de mémoire ; le surplus
+  remplissait la mémoire du PC et faisait planter les PC à 8 Go / 16 Go de RAM au bout de quelques minutes.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

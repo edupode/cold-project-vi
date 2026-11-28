@@ -19,6 +19,9 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.18",
+            "  •  Fewer crashes on 8 GB cards and 16 GB PCs: no new textures while the card is out of memory.",
+            "",
             "IN 0.3.17",
             "  •  The VIctory-NVIDIA fork is merged in: DLSS Frame Generation and FSR 3, the 30 fps limit lifted, open water",
             "     without dark blocks, PS4/PS5 pads, Windows 10 support.",
@@ -104,6 +107,9 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.18",
+            "  •  Menos crashes em placas de 8 GB e PCs de 16 GB: sem texturas novas enquanto a placa esta sem memoria.",
+            "",
             "NA 0.3.17",
             "  •  O fork VIctory-NVIDIA esta incluido: DLSS Frame Generation e FSR 3, limite de 30 fps levantado, agua sem",
             "     blocos escuros, comandos PS4/PS5, suporte ao Windows 10.",
@@ -189,6 +195,9 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.18",
+            "  •  Moins de crashs sur les cartes de 8 Go et les PC à 16 Go : plus de nouvelles textures quand la carte est pleine.",
+            "",
             "DANS LA 0.3.17",
             "  •  Le fork VIctory-NVIDIA est intégré : DLSS Frame Generation et FSR 3, limite de 30 fps levée, eau sans",
             "     blocs sombres, manettes PS4/PS5, Windows 10 pris en charge.",

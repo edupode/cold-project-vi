@@ -9935,7 +9935,13 @@ impl Meter {
                          card copies of title buffers + {targets} MB kept for render targets = {weighed} MB against a line of \
                          {line} MB ({:.1} % of a budget of {budget} MB): {}",
                         line as f64 * 100.0 / budget.max(1) as f64,
-                        if weighed < line { "room" } else { "no room, new textures wait" }
+                        if used >= budget {
+                            "no room: the card is past its budget, new textures wait"
+                        } else if weighed < line {
+                            "room"
+                        } else {
+                            "no room, new textures wait"
+                        }
                     );
                 }
                 let [looks, mapped, same, staged, all, made, views] =

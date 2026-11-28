@@ -1887,9 +1887,17 @@ pub(crate) fn room(memory: Option<[u64; 4]>) -> bool {
         // (`crate::shadow::card_room_kept`) and for the render targets a
         // world makes in its first frame ([`targets_room_kept`]) counts as
         // used.
+        // The free part of the texture blocks counts as room only while the
+        // card is under its budget: it is mostly holes in blocks a quarter
+        // full or less, which new textures seldom fit, so they took new
+        // blocks while the card stood past its budget (VI-9XWS-MD9U, RX 7600
+        // 8 GB, 28/11/2026: 8,315 MB in use of 6,610, 2,483 MB "free" in
+        // blocks, "room"; 7 GB moved into the PC's memory, which then ran
+        // out and the game ended).
         Some([budget, used, ..]) => {
-            used.saturating_sub(crate::pool::texture_room()) + crate::shadow::card_room_kept() + targets_room_kept()
-                < room_line(budget)
+            used < budget
+                && used.saturating_sub(crate::pool::texture_room()) + crate::shadow::card_room_kept() + targets_room_kept()
+                    < room_line(budget)
         }
         None => filled < WITHOUT_BUDGET,
     }
