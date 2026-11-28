@@ -1996,8 +1996,40 @@ namespace VIctoryLauncher
             // The F3 panel's "FRAME GEN" line: the driver's frame generation runs outside the emulator.
             set("VICTORY_PANEL_FRAMEGEN", !smoothBox.Checked ? "OFF" : rtxFrameGen ? "SMOOTH MOTION" : NvSmoothHere ? "NVSMOOTH30"
                 : e.ContainsKey("VICTORY_FRAMEGEN") ? "DLSS FG" : e.ContainsKey("VICTORY_FSR_FRAMEGEN") ? "FSR 3" : OwnFrameGen ? "VI 2X" : "OFF");
+            // The game ends with this code to be started again by the launcher (cratesictory-gpu\src\host\menu.rs,
+            // restart); the first start of a new victory.exe plays 30 seconds and asks for it (it would stay near 14 FPS).
+            set("VICTORY_RESTART_EXIT", RestartExitCode.ToString());
+            var mark = WarmupMark;
+            if (mark != null && !File.Exists(mark)) { set("VICTORY_WARMUP_RESTART", "30"); set("VICTORY_WARMUP_MARK", mark); }
             ApplyTestEnv(e);
             return e;
+        }
+
+        const int RestartExitCode = 75;
+
+        // %LOCALAPPDATA%ictory\warmed\launcher-<the exe's SHA-256, 16 digits>: this victory.exe had its warm-up start.
+        // (`victory play` keeps its own marks there, by another hash.) null: the exe could not be read.
+        string warmupFor, warmupMark;
+        string WarmupMark
+        {
+            get
+            {
+                var exe = VictoryExe;
+                if (exe == null) return null;
+                try
+                {
+                    var stamp = exe + "|" + File.GetLastWriteTimeUtc(exe).Ticks + "|" + new FileInfo(exe).Length;
+                    if (stamp == warmupFor) return warmupMark;
+                    string hex;
+                    using (var sha = System.Security.Cryptography.SHA256.Create())
+                    using (var f = File.OpenRead(exe))
+                        hex = BitConverter.ToString(sha.ComputeHash(f)).Replace("-", "").ToLowerInvariant().Substring(0, 16);
+                    warmupMark = Path.Combine(VictoryHome, "warmed", "launcher-" + hex);
+                    warmupFor = stamp;
+                    return warmupMark;
+                }
+                catch (Exception) { return null; }
+            }
         }
 
         // Test switches, for trying an engine change before a release: %LOCALAPPDATA%\VIctory\test-env.txt, one
@@ -2146,17 +2178,32 @@ namespace VIctoryLauncher
                     if (warmFirst) WarmWithBar(log);
                     if (ClosingNow()) return;
                     var started = DateTime.Now;
-                    var p = Start("run \"" + game + "\" --console series-s --execute", log);
-                    gameProc = p; gameHadWindow = false; windowGone = null; Anim.GameRunning = true;
-                    WatchStart(log, p);
-                    // From here the game's own state keeps PLAY off (RUNNING), not the launcher's task,
-                    // so a game that ends badly never leaves PLAY waiting.
-                    Busy(false);
-                    p.WaitForExit();
-                    // NVSmooth30's version.dll is there for the game only (tools must not load it).
-                    RemoveNvSmooth();
-                    int code = 0;
-                    try { code = p.ExitCode; } catch (Exception) { }
+                    Process p;
+                    int code;
+                    // The game may end asking to be started again (RestartExitCode): the first start of a new
+                    // victory.exe, warmed up (WarmupMark), or a restart from its F1 menu. At most three times.
+                    for (int round = 0; ; round++)
+                    {
+                        p = Start("run \"" + game + "\" --console series-s --execute", log);
+                        gameProc = p; gameHadWindow = false; windowGone = null; Anim.GameRunning = true;
+                        WatchStart(log, p);
+                        // From here the game's own state keeps PLAY off (RUNNING), not the launcher's task,
+                        // so a game that ends badly never leaves PLAY waiting.
+                        Busy(false);
+                        p.WaitForExit();
+                        // NVSmooth30's version.dll is there for the game only (tools must not load it).
+                        RemoveNvSmooth();
+                        code = 0;
+                        try { code = p.ExitCode; } catch (Exception) { }
+                        if (code != RestartExitCode || round >= 3 || gameProc != p || ClosingNow()) break;
+                        Log(L("The game asked to start again (the first start of this version, warmed up, or the F1 menu): starting it again.",
+                              "O jogo pediu para arrancar de novo (o primeiro arranque desta versao, ja aquecido, ou o menu F1): a arrancar outra vez.",
+                              "Le jeu a demandé à redémarrer (le premier lancement de cette version, réchauffé, ou le menu F1) : il redémarre."));
+                        Busy(true);
+                        try { Invoke(new Action(ApplyFrameGen)); } catch (Exception) { }
+                        Thread.Sleep(1500);
+                    }
+                    if (code == RestartExitCode) code = 0;
                     SendSessionLog(log, code, started, DateTime.Now);
                     if (gameProc != p) return; // closed from the launcher (Close game, or PLAY again)
                     gameProc = null;

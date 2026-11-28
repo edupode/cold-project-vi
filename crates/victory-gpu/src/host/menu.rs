@@ -524,6 +524,19 @@ impl Menu {
     /// `preload`: the launcher makes every shader first (`VICTORY_PRELOAD=1`, for that start alone).
     fn restart(&mut self, preload: bool) {
         let Some(play) = std::env::var_os("VICTORY_MENU_PLAY") else {
+            // Julia's Launcher (`victory run`) starts the game again itself: this process ends
+            // with the code it named (`VICTORY_RESTART_EXIT`), and the launcher, which watches
+            // it, starts it once more with its own settings and log.
+            if let Some(code) = get("VICTORY_RESTART_EXIT").parse::<u32>().ok().filter(|c| *c > 1) {
+                tracing::info!(code, preload, "settings menu: ending for the launcher to start the game again");
+                // As below: ended at once, without the DLLs' unloading.
+                // SAFETY: this process, with nothing of its own left to save.
+                unsafe {
+                    use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
+                    TerminateProcess(GetCurrentProcess(), code);
+                }
+                std::process::exit(code as i32);
+            }
             self.note = "SAVED. START THE LAUNCHER AGAIN YOURSELF".to_owned();
             return;
         };
