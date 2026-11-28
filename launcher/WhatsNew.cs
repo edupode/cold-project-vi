@@ -19,6 +19,10 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.22",
+            "  •  A first-start warm-up that crashed is not repeated: no more crash on every start.",
+            "  •  Automatic settings keep your preset (picked once per PC). Moved to Ultra Low by 0.3.21? Pick yours again.",
+            "",
             "IN 0.3.21",
             "  •  Automatic settings for your PC each time the launcher opens (your own choices are kept).",
             "  •  Untested options are marked EXPERIMENTAL and never turned on by themselves.",
@@ -120,6 +124,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.22",
+            "  •  Um aquecimento do primeiro arranque que crashou nao se repete: acabou o crash em todos os arranques.",
+            "  •  As definicoes automaticas mantem o teu preset. A 0.3.21 passou-te para Ultra baixo? Escolhe o teu outra vez.",
+            "",
             "NA 0.3.21",
             "  •  Definicoes automaticas para o teu PC sempre que o launcher abre (as tuas escolhas ficam).",
             "  •  Opcoes nao testadas marcadas EXPERIMENTAL, e nunca ligam sozinhas.",
@@ -221,6 +229,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.22",
+            "  •  Un réchauffage du premier lancement qui a planté n'est pas répété : plus de plantage à chaque lancement.",
+            "  •  Les réglages automatiques gardent ton préréglage. Mis en Ultra bas par la 0.3.21 ? Choisis le tien à nouveau.",
+            "",
             "DANS LA 0.3.21",
             "  •  Réglages automatiques pour ton PC à chaque ouverture (tes propres choix sont gardés).",
             "  •  Les options non testées sont marquées EXPÉRIMENTAL et ne s'activent jamais seules.",

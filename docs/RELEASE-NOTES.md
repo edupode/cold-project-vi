@@ -1,6 +1,4 @@
-Julia's Launcher 0.3.21: automatic settings for your PC, experimental options marked, FPS of the players' PCs.
+Julia's Launcher 0.3.22: no more crash loop on the first start of a version, and your preset stays yours.
 
-- Automatic settings: every time the launcher opens it picks the preset your card and memory hold best (Ultra Low, Modest PC or Recommended), only the tested options, and the frame generation tested on your card (NVIDIA Smooth Motion on an RTX 40/50). Choosing a preset or an option yourself keeps your choices; "Automatic for this PC" brings the automatic ones back.
-- Everything not tested in the game yet is marked EXPERIMENTAL (DLSS Frame Generation, FSR 3, VIctory 2X, NVSmooth30, the video memory reserve, pipelines before the game, the rainbow-face fix, fast loading). None of them is turned on by itself.
-- Hardware & ID: the players' PCs load again (they could stay on "Reading the averages from GitHub..."), and show the median FPS measured on each graphics card.
-- With hardware sharing on, your last game of 3 minutes or more adds its FPS (median and slowest 5 %, preset, engine) to those averages. Nothing else is sent; the report on Hardware & ID shows exactly what goes.
+- The first start of a new version warms up and restarts once. When that warm-up start crashed, every later start was a warm-up again and crashed the same way (an RX 7600 nine times in a row). Now a warm-up that fails at once is not asked for again: the next start is an ordinary one.
+- Automatic settings no longer change your preset at every opening: it is picked once for a new PC, again only if its graphics card or memory change, or when you press "Automatic for this PC". 0.3.21 could move a PC to Ultra Low that played fine on another preset; if that happened to you, pick your preset again once.

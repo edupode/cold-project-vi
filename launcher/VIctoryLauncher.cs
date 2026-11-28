@@ -926,8 +926,17 @@ namespace VIctoryLauncher
 
         void AutoBest(bool loud)
         {
+            // The preset is picked for this PC only when asked ("Automatic for this PC"), on a PC whose preset was
+            // never picked, or after its card or memory changed; otherwise the one it plays with stays. 0.3.21 picked
+            // it at every opening and moved an RX 7600 with 16 GB of RAM from Fastest (17 minutes of play) to Ultra
+            // Low, which ended in its first frame.
+            var hw = (gpuName ?? "") + "|" + Math.Round(vramGb) + "|" + Math.Round(ramGb);
+            var known = ReadSetting("auto_hw");
+            bool pick = loud || modeIndex < 0 || (!string.IsNullOrEmpty(known) && known != hw);
+            int keep = modeIndex;
             Recommended(false);
-            SelectMode(BestMode());
+            SelectMode(pick ? BestMode() : keep);
+            WriteSetting("auto_hw", hw);
             if (FgChoice != "auto") { WriteSetting("fg_engine", "auto"); rtxFrameGen = canSmooth; FillFgBox(); }
             // Only the tested frame generation goes on by itself.
             smoothBox.Checked = rtxFrameGen && !integratedOnly;
@@ -2336,6 +2345,26 @@ namespace VIctoryLauncher
                         Thread.Sleep(1500);
                     }
                     if (code == RestartExitCode) code = 0;
+                    // A warm-up start (the first of a new victory.exe) that failed at once is not asked for again:
+                    // without its mark every later start was a warm-up too, with its notice and restart, and ended the
+                    // same way (0.3.21: an RX 7600 nine times in a row in the first frame, 0x80070057, while the same
+                    // PC played 17 minutes on 0.3.19 without one). The next start is an ordinary one.
+                    if (code != 0 && (DateTime.Now - started).TotalMinutes < 2)
+                    {
+                        try
+                        {
+                            var warm = WarmupMark;
+                            if (warm != null && !File.Exists(warm))
+                            {
+                                Directory.CreateDirectory(Path.GetDirectoryName(warm));
+                                File.WriteAllText(warm, "the warm-up start of this victory.exe failed at once: not asked for again\r\n");
+                                Log(L("The first start of this version failed during its warm-up: the next start skips the warm-up.",
+                                      "O primeiro arranque desta versao falhou durante o aquecimento: o proximo arranque salta o aquecimento.",
+                                      "Le premier lancement de cette version a échoué pendant le réchauffage : le prochain lancement le saute."));
+                            }
+                        }
+                        catch (Exception) { }
+                    }
                     SendSessionLog(log, code, started, DateTime.Now);
                     // This game's FPS for the players' averages (sent with the hardware report, when sharing is on).
                     KeepFps(log, started, DateTime.Now);

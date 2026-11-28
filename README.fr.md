@@ -55,6 +55,8 @@ du jeu n'est inclus.**
   avant JOUER au lieu d'un simple « code 1 », et un tel lancement ne fait plus passer les cartes AMD sur un autre moteur.
 - **Lanceur (0.3.21) :** réglages automatiques pour chaque PC à chaque ouverture (préréglage, options testées, la
   génération d'images testée sur cette carte) ; options non testées marquées EXPÉRIMENTAL ; PC des joueurs affiche les FPS médians par carte.
+- **Lanceur (0.3.22) :** un réchauffage du premier lancement qui a planté n'est plus redemandé (il se répétait à chaque
+  lancement), et les réglages automatiques gardent le préréglage de chaque PC au lieu de le rechoisir à chaque ouverture.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

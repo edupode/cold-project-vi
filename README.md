@@ -79,6 +79,8 @@ included.**
   before PLAY instead of a bare "code 1", and such a start no longer moves AMD cards to another engine.
 - **Launcher (0.3.21):** automatic settings for each PC every time it opens (preset, tested options, the frame
   generation tested on that card); untested options marked EXPERIMENTAL; Players' PCs shows the median FPS per card.
+- **Launcher (0.3.22):** a first-start warm-up that crashed is not asked for again (it looped on every start), and
+  automatic settings keep each PC's preset instead of picking it again at every opening.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.
