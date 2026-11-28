@@ -45,7 +45,8 @@ du jeu n'est inclus.**
   [MFG Unlocker](https://github.com/dashdogy/MFG-Unlocker), un mod tiers sous licence MIT, téléchargé seulement si tu le choisis),
   FSR 3 (cartes RTX, il lui faut l'upscaling DLSS) ou VIctory 2X. Les fichiers de NVIDIA et d'AMD viennent de leur GitHub à JOUER.
 - **F1 en jeu :** menu de réglages redessiné (sections, ce que fait chaque réglage) ; tes changements s'appliquent au JOUER suivant.
-  **F3 :** le panneau de statistiques, dans tous les builds.
+  Le DLSS et le multiplicateur de génération d'images se changent maintenant dans F1 même quand le launcher a lancé le jeu
+  (seuls le moteur de génération d'images et la limite d'images restent au launcher). **F3 :** le panneau de statistiques, dans tous les builds.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

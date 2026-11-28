@@ -242,10 +242,17 @@ fn by_launcher() -> bool {
     std::env::var_os("VICTORY_MENU_PLAY").is_none() && get("VICTORY_RESTART_EXIT").parse::<u32>().is_ok_and(|c| c > 1)
 }
 
-/// A choice the launcher makes on its Play page (DLSS, frame generation, the frame rate cap,
-/// MFG Unlocker): shown as it set it, not changed here.
+/// A choice the launcher owns on its Play page (the frame generation engine, the frame rate
+/// cap, MFG Unlocker): shown as it set it, not changed here. DLSS is changed here and the
+/// launcher applies it at the next PLAY; the frame generation multiplier here while frame
+/// generation runs (live, and the launcher keeps it), else the launcher's engine decides.
+/// Locked all together, changes made in F1 were refused while the start notice said "F1 MENU:
+/// 2X-6X", and players thought nothing saved (28/11/2026).
 fn locked(item: &Item) -> bool {
-    by_launcher() && (item.var.starts_with("VICTORY_MENU_") || item.var == MFG)
+    by_launcher()
+        && (matches!(item.var, "VICTORY_MENU_FG_TYPE" | "VICTORY_MENU_FPS")
+            || item.var == MFG
+            || item.var == "VICTORY_MENU_FRAMEGEN" && !crate::streamline::framegen_live())
 }
 
 /// A line that does not apply to this start: the launcher always plays the Series S profile.
@@ -580,6 +587,14 @@ fn shown_value(item: &Item, value: &str) -> String {
     match index_of(item, value) {
         Some(i) => item.values[i].1.to_owned(),
         None if value.is_empty() => "DEFAULT".to_owned(),
+        // The launcher's frame generation outside the emulator, or its own (shown, not picked here).
+        None if item.var == "VICTORY_MENU_FG_TYPE" => match value {
+            "smooth" => "NVIDIA SMOOTH MOTION (DRIVER)".to_owned(),
+            "nvsmooth30" => "NVSMOOTH30 (DRIVER)".to_owned(),
+            "vi" => "VI 2X".to_owned(),
+            "off" => "OFF".to_owned(),
+            other => other.to_ascii_uppercase(),
+        },
         None => value.to_ascii_uppercase(),
     }
 }

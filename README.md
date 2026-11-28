@@ -69,7 +69,8 @@ included.**
   [MFG Unlocker](https://github.com/dashdogy/MFG-Unlocker), someone else's MIT-licensed mod, fetched only if you pick it),
   FSR 3 (RTX cards, it needs DLSS upscaling) or VIctory 2X. NVIDIA's and AMD's files are fetched from their own GitHub at PLAY.
 - **F1 in the game:** a redesigned settings menu (sections, what each setting does); what you change there applies at the next
-  PLAY. **F3:** the stats panel, in every build.
+  PLAY. DLSS and the frame generation multiplier can now be changed in F1 even when the launcher started the game (only
+  the frame generation engine and the frame cap stay the launcher's). **F3:** the stats panel, in every build.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.
