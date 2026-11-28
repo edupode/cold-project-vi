@@ -1645,6 +1645,15 @@ namespace VIctoryLauncher
         {
             if (!failedEarly) { if (ReadSetting("edupode_fails") != "0") WriteSetting("edupode_fails", "0"); return; }
             if (UseAmdEngine || !hasRadeon || hasNvidia) return;
+            // Belobug's repository is gone from GitHub (removed 27/11/2026, its address answers 404): the AMD engine can
+            // no longer be downloaded, so the launcher moves to it only where an earlier Setup left its source.
+            if (!File.Exists(Path.Combine(AmdEngineDir, "Cargo.toml")))
+            {
+                Log(L("The edupode engine ended at start on this Radeon. Belobug's AMD engine can no longer be downloaded (its GitHub page was removed): staying with edupode. A report ('Send errors') helps us make it start on your card.",
+                      "O motor edupode fechou ao arrancar nesta Radeon. O motor AMD do Belobug ja nao pode ser descarregado (a pagina do GitHub foi removida): fica o edupode. Um relatorio ('Enviar erros') ajuda-nos a po-lo a arrancar na tua placa.",
+                      "Le moteur edupode s'est arrêté au lancement sur cette Radeon. Le moteur AMD de Belobug ne peut plus être téléchargé (sa page GitHub a été retirée) : edupode reste. Un rapport ('Envoyer les erreurs') nous aide à le faire démarrer sur ta carte."));
+                return;
+            }
             int fails;
             int.TryParse(ReadSetting("edupode_fails") ?? "0", out fails);
             fails++;
