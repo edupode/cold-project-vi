@@ -19,6 +19,9 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.23",
+            "  •  The game no longer closes a second after opening on some PCs (RTX 4060, RX 6500 XT).",
+            "",
             "IN 0.3.22",
             "  •  A first-start warm-up that crashed is not repeated: no more crash on every start.",
             "  •  Automatic settings keep your preset (picked once per PC). Moved to Ultra Low by 0.3.21? Pick yours again.",
@@ -124,6 +127,9 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.23",
+            "  •  O jogo ja nao fecha um segundo depois de abrir em alguns PCs (RTX 4060, RX 6500 XT).",
+            "",
             "NA 0.3.22",
             "  •  Um aquecimento do primeiro arranque que crashou nao se repete: acabou o crash em todos os arranques.",
             "  •  As definicoes automaticas mantem o teu preset. A 0.3.21 passou-te para Ultra baixo? Escolhe o teu outra vez.",
@@ -229,6 +235,9 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.23",
+            "  •  Le jeu ne se ferme plus une seconde après l'ouverture sur certains PC (RTX 4060, RX 6500 XT).",
+            "",
             "DANS LA 0.3.22",
             "  •  Un réchauffage du premier lancement qui a planté n'est pas répété : plus de plantage à chaque lancement.",
             "  •  Les réglages automatiques gardent ton préréglage. Mis en Ultra bas par la 0.3.21 ? Choisis le tien à nouveau.",

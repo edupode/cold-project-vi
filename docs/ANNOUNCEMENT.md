@@ -1,7 +1,6 @@
 ## Julia's Launcher {tag} is out 🩹
 **Fixes**
-🔁 Crashed on every start since 0.3.20/0.3.21? The first-start warm-up no longer repeats after a crash: the next start is an ordinary one.
-🎚️ Automatic settings keep your preset. If 0.3.21 moved you to **Ultra Low** and the game crashed, pick your old preset again once (for example Fastest or Recommended).
+🚪 The game opened for a second and closed? On some PCs (RTX 4060, RX 6500 XT and others) the game stopped itself during its upscaler setup. VIctory now lets it go on. Other PCs run exactly as before.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.

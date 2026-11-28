@@ -57,6 +57,8 @@ du jeu n'est inclus.**
   génération d'images testée sur cette carte) ; options non testées marquées EXPÉRIMENTAL ; PC des joueurs affiche les FPS médians par carte.
 - **Lanceur (0.3.22) :** un réchauffage du premier lancement qui a planté n'est plus redemandé (il se répétait à chaque
   lancement), et les réglages automatiques gardent le préréglage de chaque PC au lieu de le rechoisir à chaque ouverture.
+- **Moteur (0.3.23) :** l'arrêt du jeu en +0x1dac734 (un composant de la préparation FidelityFX qui n'a pas démarré)
+  est traité comme continuer sans lui : le jeu ne se ferme plus au bout d'une seconde sur certains PC ; les autres n'y arrivent jamais.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

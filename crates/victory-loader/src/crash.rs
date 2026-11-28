@@ -480,6 +480,22 @@ unsafe extern "system" fn handler(info: *mut EXCEPTION_POINTERS) -> i32 {
     if unsafe { emulate_amd_only(info) } {
         return -1; // EXCEPTION_CONTINUE_EXECUTION
     }
+    // The title's assert after a component that did not start (`crate::hooks::FEATURE_ASSERT_AT`):
+    // the run goes on without it, past the `int3`, instead of ending a second in.
+    // SAFETY: as above.
+    if unsafe { (*(*info).ExceptionRecord).ExceptionCode } == EXCEPTION_BREAKPOINT {
+        let at = crate::hooks::FEATURE_ASSERT_AT.load(std::sync::atomic::Ordering::Relaxed);
+        // SAFETY: as above; the faulting thread's context.
+        let context = unsafe { &mut *(*info).ContextRecord };
+        if at != 0 && context.Rip as usize == at {
+            context.Rip += 1;
+            static TOLD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if !TOLD.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                tracing::warn!("the title stopped at +0x1dac734 (a component it found turned on did not start, under its FidelityFX setup): going on without it");
+            }
+            return -1; // EXCEPTION_CONTINUE_EXECUTION
+        }
+    }
     // SAFETY: as above.
     if FATAL.contains(&unsafe { (*(*info).ExceptionRecord).ExceptionCode }) {
         // SAFETY: as above.

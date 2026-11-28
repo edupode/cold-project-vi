@@ -1,4 +1,4 @@
-Julia's Launcher 0.3.22: no more crash loop on the first start of a version, and your preset stays yours.
+Julia's Launcher 0.3.23: the game no longer closes a second after it opens on some PCs.
 
-- The first start of a new version warms up and restarts once. When that warm-up start crashed, every later start was a warm-up again and crashed the same way (an RX 7600 nine times in a row). Now a warm-up that fails at once is not asked for again: the next start is an ordinary one.
-- Automatic settings no longer change your preset at every opening: it is picked once for a new PC, again only if its graphics card or memory change, or when you press "Automatic for this PC". 0.3.21 could move a PC to Ultra Low that played fine on another preset; if that happened to you, pick your preset again once.
+- On some PCs (an RTX 4060 since 0.3.16 with every preset, an RX 6500 XT) the game opened for a second and closed (0x80000003 at +0x1dac734): the game stopped itself when one of its components, under its FidelityFX setup, did not start. VIctory now lets it go on without that component. Only a start that fails there reaches this; every other PC runs exactly as before.
+- The 0.3.22 fixes stay: no crash loop on the first start of a version, and your preset stays yours.
