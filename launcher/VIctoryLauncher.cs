@@ -2005,18 +2005,61 @@ namespace VIctoryLauncher
             // The F3 panel's "FRAME GEN" line: the driver's frame generation runs outside the emulator.
             set("VICTORY_PANEL_FRAMEGEN", !smoothBox.Checked ? "OFF" : rtxFrameGen ? "SMOOTH MOTION" : NvSmoothHere ? "NVSMOOTH30"
                 : e.ContainsKey("VICTORY_FRAMEGEN") ? "DLSS FG" : e.ContainsKey("VICTORY_FSR_FRAMEGEN") ? "FSR 3" : OwnFrameGen ? "VI 2X" : "OFF");
-            // The game ends with this code to be started again by the launcher (cratesictory-gpu\src\host\menu.rs,
+            // The game ends with this code to be started again by the launcher (crates\victory-gpu\src\host\menu.rs,
             // restart); the first start of a new victory.exe plays 10 seconds (as VIctory-NVIDIA has it since c1cbdc9) and asks for it (it would stay near 14 FPS).
             set("VICTORY_RESTART_EXIT", RestartExitCode.ToString());
             var mark = WarmupMark;
             if (mark != null && !File.Exists(mark)) { set("VICTORY_WARMUP_RESTART", "10"); set("VICTORY_WARMUP_MARK", mark); }
+            // The F1 menu (crates\victory-gpu\src\host\menu.rs): the launcher's choices as it shows them (it does not
+            // change them there: the Play page does), then the switches a player changed in it.
+            if (!e.ContainsKey("VICTORY_MENU_DLSS")) set("VICTORY_MENU_DLSS", "off");
+            if (!e.ContainsKey("VICTORY_MENU_FRAMEGEN")) set("VICTORY_MENU_FRAMEGEN", "0");
+            if (!e.ContainsKey("VICTORY_MENU_FG_TYPE")) set("VICTORY_MENU_FG_TYPE", "auto");
+            set("VICTORY_MENU_FPS", e.ContainsKey("VICTORY_FPS_MAX") ? e["VICTORY_FPS_MAX"] : "1000");
+            set("VICTORY_MENU_CONSOLE", "series-s");
+            if (!e.ContainsKey("VICTORY_FPS_LINE")) set("VICTORY_FPS_LINE", "1");
+            if (!e.ContainsKey("VICTORY_PANEL")) set("VICTORY_PANEL", "0");
+            ApplyMenuFile(e);
             ApplyTestEnv(e);
             return e;
         }
 
+        // The switches changed in the game's F1 menu, over the preset's: every VICTORY_ line of
+        // %LOCALAPPDATA%\victory\victory-settings.txt but the launcher's own choices (VICTORY_MENU_..., MFG Unlocker),
+        // which the Play page makes. An empty value unsets it; "RESET ALL" in F1 deletes the file. Logged once.
+        bool menuFileLogged;
+        void ApplyMenuFile(Dictionary<string, string> e)
+        {
+            try
+            {
+                var file = Path.Combine(VictoryHome, "victory-settings.txt");
+                if (!File.Exists(file)) return;
+                var applied = new List<string>();
+                foreach (var raw in File.ReadAllLines(file))
+                {
+                    var line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith("#")) continue;
+                    var i = line.IndexOf('=');
+                    if (i <= 0) continue;
+                    var k = line.Substring(0, i).Trim();
+                    var v = line.Substring(i + 1).Trim();
+                    if (!k.StartsWith("VICTORY_") || k.StartsWith("VICTORY_MENU_") || k == "VICTORY_MFG_UNLOCKER"
+                        || k == "VICTORY_GAME_DIR" || k == "VICTORY_DATA_DIR" || k == "VICTORY_CACHE_DIR") continue;
+                    if (v.Length == 0) e.Remove(k); else e[k] = v;
+                    applied.Add(k + "=" + v);
+                }
+                if (applied.Count > 0 && !menuFileLogged)
+                {
+                    menuFileLogged = true;
+                    Log(L("Settings from the game's F1 menu: ", "Definicoes do menu F1 do jogo: ", "Réglages du menu F1 du jeu : ") + string.Join(" ", applied.ToArray()));
+                }
+            }
+            catch (Exception) { }
+        }
+
         const int RestartExitCode = 75;
 
-        // %LOCALAPPDATA%ictory\warmed\launcher-<the exe's SHA-256, 16 digits>: this victory.exe had its warm-up start.
+        // %LOCALAPPDATA%\victory\warmed\launcher-<the exe's SHA-256, 16 digits>: this victory.exe had its warm-up start.
         // (`victory play` keeps its own marks there, by another hash.) null: the exe could not be read.
         string warmupFor, warmupMark;
         string WarmupMark

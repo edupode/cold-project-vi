@@ -76,7 +76,7 @@ namespace VIctoryLauncher
             }
             rtx30 = Regex.IsMatch(gpuName, @"RTX\s*30\d\d");
             // (RTX Ada, Blackwell and RTX PRO workstation cards too, as VIctory-NVIDIA counts them.)
-            anyRtx = Regex.IsMatch(gpuName, @"RTX\s*[2-5]0\d\d|RTX\s*A\d{4}|RTX\s*PRO|Ada|Blackwell", RegexOptions.IgnoreCase);
+            anyRtx = Regex.IsMatch(gpuName, @"RTX\s*[2-5]0\d\d|RTX\s*A\d{4}|RTX\s*PRO|\bAda\b|Blackwell", RegexOptions.IgnoreCase);
             olderRtx = Regex.IsMatch(gpuName, @"RTX\s*(20|30)\d\d");
             if (!hasNvidia && hasRadeon) gpuName = radeonName.Replace("AMD ", "");
         }

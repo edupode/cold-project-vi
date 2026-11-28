@@ -17,9 +17,16 @@
 //! (DLSS mode, frame generation, frame rate, console, picture size), which it
 //! turns into the layer's switches; the others are the switches themselves.
 //!
-//! In every build, as the stats panel is. Drawn as
-//! that panel is: white text on a black box, copied onto the swap chain's
-//! buffer, in the middle of the picture.
+//! In every build, as the stats panel is. Drawn with the panel's letters, in
+//! colours of its own ([`Tone`]): a frame, a title bar, the settings in
+//! sections, the line picked on a bar, and under them what that line does;
+//! copied onto the swap chain's buffer, in the middle of the picture.
+//!
+//! Started by Julia's Launcher (`victory run`, [`by_launcher`]): its own
+//! choices (DLSS, frame generation, the frame rate cap, MFG Unlocker) are
+//! shown and not changed here, the console lines are left out (it always
+//! plays the Series S profile), and the launcher applies the rest of the
+//! saved file at its next PLAY.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
@@ -32,16 +39,16 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
 
-use super::font::{colours, glyph};
+use super::font::glyph;
 use super::{Host, HostList, transition};
 
 const GLYPH: (u32, u32) = (5, 7);
 const CELL: (u32, u32) = (6, 9);
-const COLUMNS: u32 = 60;
+const COLUMNS: u32 = 64;
 /// Lines of the box: a title, a help line, a blank, the settings shown, a
 /// blank, what the line picked does (`ABOUT`, else blank), a note and the
 /// repository's link.
-const ROWS: usize = 20;
+const ROWS: usize = 22;
 const LINES: u32 = ROWS as u32 + 9;
 /// The action that preloads shaders, and what is said of it while it is picked.
 const PRELOAD: usize = 2;
@@ -110,56 +117,100 @@ const RIM: u32 = 4;
 const UPLOADS: usize = 4;
 
 /// A setting: the variable, its name in the menu, the values it takes
-/// (`""`: not set, the build's own default), and whether a change applies at once.
+/// (`""`: not set, the build's own default), whether a change applies at once,
+/// and what it does (shown under the settings while it is picked).
 struct Item {
     var: &'static str,
     label: &'static str,
     values: &'static [(&'static str, &'static str)],
     live: bool,
+    about: &'static str,
 }
 
 const ON_UNSET: &[(&str, &str)] = &[("1", "ON"), ("", "OFF")];
 const UNSET_ON: &[(&str, &str)] = &[("", "OFF"), ("1", "ON")];
 const STAGES: &[(&str, &str)] = &[("2", "2"), ("1", "1"), ("0", "0 OFF")];
 
-/// The first value of each is what the launcher starts with.
+/// The first value of each is what the launcher starts with. In the order shown, by section
+/// ([`SECTIONS`]).
 #[rustfmt::skip]
 const ITEMS: &[Item] = &[
-    // The launcher's own choices.
-    Item { var: "VICTORY_MENU_DLSS", label: "DLSS", values: &[("quality", "QUALITY"), ("balanced", "BALANCED"), ("performance", "PERFORMANCE"), ("dlaa", "DLAA (NATIVE)"), ("off", "OFF")], live: false },
-    Item { var: "VICTORY_MENU_FRAMEGEN", label: "FRAME GENERATION", values: &[("0", "OFF"), ("2", "2X"), ("3", "3X"), ("4", "4X"), ("5", "5X"), ("6", "6X (MOST)")], live: false },
-    // DLSS Frame Generation where it runs (RTX 40 and later), else AMD's FSR 3 (2X only).
-    Item { var: "VICTORY_MENU_FG_TYPE", label: "FRAME GEN TYPE", values: &[("auto", "AUTO"), ("dlss", "DLSS"), ("fsr", "FSR 3 (OLDER CARDS)")], live: false },
+    // Upscaling and frame generation: the launcher's own choices, and the DLSS model.
+    Item { var: "VICTORY_MENU_DLSS", label: "DLSS", values: &[("quality", "QUALITY"), ("balanced", "BALANCED"), ("performance", "PERFORMANCE"), ("dlaa", "DLAA (NATIVE)"), ("off", "OFF")], live: false,
+        about: "NVIDIA DLSS DRAWS THE WORLD SMALLER AND REBUILDS IT SHARP. QUALITY LOOKS BEST, PERFORMANCE IS THE FASTEST. RTX CARDS ONLY." },
+    Item { var: "VICTORY_DLSS_PRESET", label: "DLSS MODEL", values: &[("", "DEFAULT"), ("k", "K"), ("j", "J"), ("m", "M"), ("l", "L")], live: false,
+        about: "THE DLSS MODEL. DEFAULT IS USUALLY BEST, TRY K OR M IF MOVING THINGS SMEAR." },
+    Item { var: "VICTORY_MENU_FRAMEGEN", label: "FRAME GENERATION", values: &[("0", "OFF"), ("2", "2X"), ("3", "3X"), ("4", "4X"), ("5", "5X"), ("6", "6X (MOST)")], live: false,
+        about: "MADE-UP FRAMES BETWEEN THE GAME FRAMES: SMOOTHER MOTION, A LITTLE MORE INPUT LAG. THE GAME ITSELF DOES NOT RUN FASTER." },
+    // DLSS Frame Generation where it runs (RTX 40 and later), else AMD's FSR 3 (2X only, with DLSS upscaling).
+    Item { var: "VICTORY_MENU_FG_TYPE", label: "FRAME GEN TYPE", values: &[("auto", "AUTO"), ("dlss", "DLSS"), ("fsr", "FSR 3 (NEEDS DLSS)")], live: false,
+        about: "DLSS FRAME GEN NEEDS AN RTX 40 OR 50 (RTX 20/30: MFG UNLOCKER). FSR 3 RUNS 2X WITH DLSS UPSCALING ON ANY RTX." },
     // Someone else's mod (apps\victory\src\play.rs): downloaded at the next start, then loaded.
-    Item { var: MFG, label: "MFG UNLOCKER (MOD, RTX 20/30)", values: UNSET_ON, live: false },
-    Item { var: "VICTORY_MENU_FPS", label: "FRAME RATE CAP", values: &[("1000", "NONE"), ("120", "120"), ("60", "60"), ("30", "30 (THE GAME)")], live: false },
-    Item { var: "VICTORY_FPS_LINE", label: "FPS AT THE TOP", values: &[("1", "ON"), ("0", "OFF")], live: true },
-    Item { var: "VICTORY_PANEL", label: "STATS PANEL (F3)", values: &[("0", "OFF"), ("1", "ON")], live: true },
-    Item { var: "VICTORY_FULLSCREEN", label: "FULLSCREEN (NO BORDER)", values: UNSET_ON, live: false },
-    Item { var: "VICTORY_MOUSE_CAPTURE", label: "MOUSE CAPTURE", values: UNSET_ON, live: false },
-    Item { var: "VICTORY_IME_ENGLISH", label: "ENGLISH KEYBOARD", values: UNSET_ON, live: false },
-    Item { var: "VICTORY_MENU_CONSOLE", label: "CONSOLE", values: &[("series-x", "SERIES X"), ("series-s", "SERIES S (FASTER)")], live: false },
-    Item { var: "VICTORY_MENU_RES", label: "SERIES X PICTURE", values: &[("1440", "2560X1440"), ("1080to1440", "1080P TO 1440P"), ("4k", "3840X2160")], live: false },
-    // The layer's switches.
-    Item { var: "VICTORY_DLSS_PRESET", label: "DLSS MODEL", values: &[("", "DEFAULT"), ("k", "K"), ("j", "J"), ("m", "M"), ("l", "L")], live: false },
-    Item { var: "VICTORY_AMBIENT", label: "LIGHT ESTIMATE", values: &[("0.8", "0.8"), ("1", "1"), ("0.5", "0.5"), ("", "OFF")], live: false },
-    Item { var: "VICTORY_AMBIENT_SPECULAR", label: "REFLECTION ESTIMATE", values: ON_UNSET, live: false },
-    Item { var: "VICTORY_AMBIENT_AIR", label: "FOG CAP", values: &[("1.5", "1.5"), ("1", "1"), ("2", "2"), ("", "NONE")], live: false },
-    Item { var: "VICTORY_BVH_BUILDER", label: "RAY TRACING (SLOW, BROKEN)", values: UNSET_ON, live: false },
+    Item { var: MFG, label: "MFG UNLOCKER (MOD, RTX 20/30)", values: UNSET_ON, live: false,
+        about: "A MOD, NOT OURS: DLSS FRAME GEN ON RTX 20 AND 30 CARDS." },
+    // Frame rate and screen.
+    Item { var: "VICTORY_MENU_FPS", label: "FRAME RATE CAP", values: &[("1000", "NONE"), ("120", "120"), ("60", "60"), ("30", "30 (THE GAME)")], live: false,
+        about: "THE MOST FRAMES A SECOND THE GAME DRAWS. 60 KEEPS IT STEADY, NONE LETS IT GO AS HIGH AS IT CAN." },
+    Item { var: "VICTORY_FPS_LINE", label: "FPS AT THE TOP", values: &[("1", "ON"), ("0", "OFF")], live: true,
+        about: "A SMALL FRAMES-A-SECOND COUNTER IN THE TOP LEFT CORNER. CHANGES AT ONCE." },
+    Item { var: "VICTORY_PANEL", label: "STATS PANEL (F3)", values: &[("0", "OFF"), ("1", "ON")], live: true,
+        about: "THE F3 PANEL: FRAME TIME, MEMORY, VIDEO MEMORY AND WHAT THE EMULATOR IS DOING. CHANGES AT ONCE." },
+    Item { var: "VICTORY_FULLSCREEN", label: "FULLSCREEN (NO BORDER)", values: UNSET_ON, live: false,
+        about: "THE WINDOW COVERS THE WHOLE SCREEN, WITHOUT A BORDER." },
+    Item { var: "VICTORY_MOUSE_CAPTURE", label: "MOUSE CAPTURE", values: UNSET_ON, live: false,
+        about: "KEEPS THE MOUSE INSIDE THE GAME WINDOW WHILE YOU PLAY." },
+    Item { var: "VICTORY_IME_ENGLISH", label: "ENGLISH KEYBOARD", values: UNSET_ON, live: false,
+        about: "READS KEYS AS AN ENGLISH (US) KEYBOARD, FOR LAYOUTS WHERE KEYS LAND IN THE WRONG PLACE." },
+    // Console.
+    Item { var: "VICTORY_MENU_CONSOLE", label: "CONSOLE", values: &[("series-x", "SERIES X"), ("series-s", "SERIES S (FASTER)")], live: false,
+        about: "SERIES S DRAWS LESS AND RUNS FASTER, SERIES X LOOKS SHARPER." },
+    Item { var: "VICTORY_MENU_RES", label: "SERIES X PICTURE", values: &[("1440", "2560X1440"), ("1080to1440", "1080P TO 1440P"), ("4k", "3840X2160")], live: false,
+        about: "THE PICTURE SIZE WITH THE SERIES X PROFILE." },
+    // Picture.
+    Item { var: "VICTORY_AMBIENT", label: "LIGHT ESTIMATE", values: &[("0.8", "0.8"), ("1", "1"), ("0.5", "0.5"), ("", "OFF")], live: false,
+        about: "EXTRA LIGHT IN PLACE OF THE RAY TRACED BOUNCE LIGHT. HIGHER IS BRIGHTER, OFF LEAVES DARK ROOMS DARK." },
+    Item { var: "VICTORY_AMBIENT_SPECULAR", label: "REFLECTION ESTIMATE", values: ON_UNSET, live: false,
+        about: "A STAND-IN FOR RAY TRACED REFLECTIONS ON SHINY SURFACES." },
+    Item { var: "VICTORY_AMBIENT_AIR", label: "FOG CAP", values: &[("1.5", "1.5"), ("1", "1"), ("2", "2"), ("", "NONE")], live: false,
+        about: "HOW THICK THE FOG AND THE LIGHT IN THE AIR MAY GET. LOWER IS CLEARER." },
+    Item { var: "VICTORY_BVH_BUILDER", label: "RAY TRACING (SLOW, BROKEN)", values: UNSET_ON, live: false,
+        about: "THE GAME RAY TRACING. VERY SLOW AND STILL BROKEN: FOR TESTS ONLY." },
     // On unless "0": a file saved by an earlier version holds an empty value (its OFF) or "1",
     // and both start it on, so nobody keeps it off from before by accident (2026-11-27).
-    Item { var: "VICTORY_WATER_LIGHT", label: "WATER LIGHT", values: &[("", "ON"), ("0", "OFF")], live: false },
-    Item { var: "VICTORY_LEAVE_OUT", label: "HEAT HAZE AND DECAL DEFRAG", values: &[("02384a60fda6f2d0,731a39171b568298", "LEFT OUT"), ("", "RUN (SLOWER, SMEARS)")], live: false },
-    Item { var: "VICTORY_EARLY_DEPTH", label: "EARLY DEPTH TEST", values: ON_UNSET, live: false },
-    Item { var: "VICTORY_WC_NO_BACK", label: "SKIP BIG COPY-BACKS", values: ON_UNSET, live: false },
-    Item { var: "VICTORY_SOFT_VIEWS", label: "SOFT VIEWS (NO CUT FREEZES)", values: &[("copies", "ON"), ("", "OFF")], live: false },
-    Item { var: "VICTORY_TEXTURE_NO_WAIT", label: "TEXTURE NO WAIT", values: ON_UNSET, live: false },
-    Item { var: "VICTORY_RELAY", label: "RELAY (SPEED, TRIANGLES)", values: STAGES, live: false },
-    Item { var: "VICTORY_CARD_STEPS", label: "CARD STEPS", values: STAGES, live: false },
-    Item { var: "VICTORY_INDIRECT_BATCH", label: "INDIRECT BATCH", values: STAGES, live: false },
-    Item { var: "VICTORY_CARD_BUFFERS_MIN_KB", label: "CARD COMPARES FROM (KB)", values: &[("64", "64"), ("1024", "1024")], live: false },
-    Item { var: "VICTORY_PORT_CONSTANTS", label: "CONSTANTS HEAP IN PLACE", values: UNSET_ON, live: false },
+    Item { var: "VICTORY_WATER_LIGHT", label: "WATER LIGHT", values: &[("", "ON"), ("0", "OFF")], live: false,
+        about: "THE LIGHT ON OPEN WATER. TURN IT OFF ONLY IF THE WATER SHOWS DARK SQUARES." },
+    Item { var: "VICTORY_LEAVE_OUT", label: "HEAT HAZE AND DECAL DEFRAG", values: &[("02384a60fda6f2d0,731a39171b568298", "LEFT OUT"), ("", "RUN (SLOWER, SMEARS)")], live: false,
+        about: "THE HEAT HAZE AND DECAL DEFRAG PASSES. LEFT OUT IS FASTER, RUN THEM ONLY TO COMPARE." },
+    // Advanced: the layer's switches, for tests.
+    Item { var: "VICTORY_EARLY_DEPTH", label: "EARLY DEPTH TEST", values: ON_UNSET, live: false,
+        about: "TESTS DEPTH BEFORE SHADING. A CHANGE REBUILDS EVERY SHADER AT THE NEXT START: A SLOW FIRST RUN." },
+    Item { var: "VICTORY_WC_NO_BACK", label: "SKIP BIG COPY-BACKS", values: ON_UNSET, live: false,
+        about: "BIG BUFFERS THE CARD WRITES ARE NOT COPIED BACK. FASTER, OFF IF SOMETHING LOOKS WRONG." },
+    Item { var: "VICTORY_SOFT_VIEWS", label: "SOFT VIEWS (NO CUT FREEZES)", values: &[("copies", "ON"), ("", "OFF")], live: false,
+        about: "MEMORY VIEWS KEPT AS COPIES, AGAINST SHORT FREEZES IN CUTSCENES." },
+    Item { var: "VICTORY_TEXTURE_NO_WAIT", label: "TEXTURE NO WAIT", values: ON_UNSET, live: false,
+        about: "TEXTURES ARE READ WITHOUT WAITING FOR THE GAME TO FINISH THEM. OFF FIXES RAINBOW FACES, COSTS FRAMES." },
+    Item { var: "VICTORY_RELAY", label: "RELAY (SPEED, TRIANGLES)", values: STAGES, live: false,
+        about: "HOW BUFFER COPIES REACH THE CARD. 2 IS FASTEST, 1 OR 0 MAY FIX STRETCHED BODIES, SLOWER." },
+    Item { var: "VICTORY_CARD_STEPS", label: "CARD STEPS", values: STAGES, live: false,
+        about: "WORK DONE BY THE CARD INSTEAD OF THE PROCESSOR. 0 MAY FIX STRETCHED BODIES, SLOWER." },
+    Item { var: "VICTORY_INDIRECT_BATCH", label: "INDIRECT BATCH", values: STAGES, live: false,
+        about: "HOW MANY INDIRECT DRAWS ARE PREPARED TOGETHER. FOR TESTS." },
+    Item { var: "VICTORY_CARD_BUFFERS_MIN_KB", label: "CARD COMPARES FROM (KB)", values: &[("64", "64"), ("1024", "1024")], live: false,
+        about: "THE SMALLEST BUFFER THE CARD CHECKS FOR CHANGES. FOR TESTS." },
+    Item { var: "VICTORY_PORT_CONSTANTS", label: "CONSTANTS HEAP IN PLACE", values: UNSET_ON, live: false,
+        about: "THE CARD READS THE GAME CONSTANTS WHERE THE GAME WRITES THEM. EXPERIMENTAL." },
 ];
+/// The section headers: the setting each comes before, and its title.
+const SECTIONS: &[(&str, &str)] = &[
+    ("VICTORY_MENU_DLSS", "UPSCALING AND FRAME GENERATION"),
+    ("VICTORY_MENU_FPS", "FRAME RATE AND SCREEN"),
+    ("VICTORY_MENU_CONSOLE", "CONSOLE"),
+    ("VICTORY_AMBIENT", "PICTURE"),
+    ("VICTORY_EARLY_DEPTH", "ADVANCED: FOR TESTS"),
+];
+/// The header before the actions.
+const ACTIONS_SECTION: &str = "SAVE, SHARE AND MORE";
 /// The lines after the settings.
 const ACTIONS: [&str; 7] = [
     "SAVE AND RESTART NOW",
@@ -170,6 +221,239 @@ const ACTIONS: [&str; 7] = [
     "IMPORT SAVE (PICK FROM SAVES)",
     "CLOSE",
 ];
+/// What the actions without lines of their own (`ABOUT_PRELOAD` and the save ones) do.
+const ABOUT_ACTIONS: [&str; 7] = [
+    "SAVES THE CHANGES AND STARTS THE GAME AGAIN WITH THEM.",
+    "SAVES THE CHANGES FOR THE NEXT TIME THE GAME STARTS.",
+    "",
+    "FORGETS EVERY CHANGE MADE HERE: THE DEFAULTS COME BACK AT THE NEXT START.",
+    "",
+    "",
+    "CLOSES THIS MENU. F1 OPENS IT AGAIN.",
+];
+/// The line under the settings while nothing was said.
+const FOOTER: &str = "* = CHANGED: APPLIES AT THE NEXT START UNLESS LIVE";
+/// Said of a launcher's choice ([`locked`]) when it is picked or changed.
+const LOCKED: &str = "SET IN THE LAUNCHER: CHANGE IT ON ITS PLAY PAGE";
+
+/// Started by Julia's Launcher (`victory run`): no `VICTORY_MENU_PLAY` to start again with, and
+/// the code to end with for the launcher to start the game again (`VICTORY_RESTART_EXIT`).
+fn by_launcher() -> bool {
+    std::env::var_os("VICTORY_MENU_PLAY").is_none() && get("VICTORY_RESTART_EXIT").parse::<u32>().is_ok_and(|c| c > 1)
+}
+
+/// A choice the launcher makes on its Play page (DLSS, frame generation, the frame rate cap,
+/// MFG Unlocker): shown as it set it, not changed here.
+fn locked(item: &Item) -> bool {
+    by_launcher() && (item.var.starts_with("VICTORY_MENU_") || item.var == MFG)
+}
+
+/// A line that does not apply to this start: the launcher always plays the Series S profile.
+fn hidden(item: &Item) -> bool {
+    by_launcher() && matches!(item.var, "VICTORY_MENU_CONSOLE" | "VICTORY_MENU_RES")
+}
+
+/// A line of the box: its letters, the colour of each, and the colour behind them.
+#[derive(Clone, Debug)]
+struct Line {
+    text: String,
+    fg: Vec<Tone>,
+    bg: Tone,
+}
+
+impl Line {
+    fn new(bg: Tone) -> Line {
+        Line { text: String::new(), fg: Vec::new(), bg }
+    }
+
+    fn plain(text: &str, fg: Tone, bg: Tone) -> Line {
+        let mut line = Line::new(bg);
+        line.push(text, fg);
+        line
+    }
+
+    /// Adds `text` in `tone`, as much of it as fits the box.
+    fn push(&mut self, text: &str, tone: Tone) {
+        for c in text.chars() {
+            if self.text.len() >= COLUMNS as usize {
+                break;
+            }
+            self.text.push(c);
+            self.fg.push(tone);
+        }
+    }
+}
+
+/// The box's colours.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+enum Tone {
+    Back,
+    Black,
+    White,
+    Border,
+    TitleBar,
+    Title,
+    Muted,
+    Section,
+    Rule,
+    Label,
+    Value,
+    Bar,
+    Picked,
+    Cursor,
+    Live,
+    Changed,
+    Locked,
+    Note,
+    Link,
+}
+
+/// Every tone, in the order of its number.
+const TONES: [Tone; 19] = [
+    Tone::Back,
+    Tone::Black,
+    Tone::White,
+    Tone::Border,
+    Tone::TitleBar,
+    Tone::Title,
+    Tone::Muted,
+    Tone::Section,
+    Tone::Rule,
+    Tone::Label,
+    Tone::Value,
+    Tone::Bar,
+    Tone::Picked,
+    Tone::Cursor,
+    Tone::Live,
+    Tone::Changed,
+    Tone::Locked,
+    Tone::Note,
+    Tone::Link,
+];
+
+impl Tone {
+    /// sRGB.
+    const fn rgb(self) -> [u8; 3] {
+        match self {
+            Tone::Back => [16, 17, 26],
+            Tone::Black => [0, 0, 0],
+            Tone::White | Tone::Title | Tone::Picked => [255, 255, 255],
+            Tone::Border => [150, 80, 190],
+            Tone::TitleBar => [60, 30, 78],
+            Tone::Muted => [138, 142, 164],
+            Tone::Section | Tone::Cursor => [214, 150, 240],
+            Tone::Rule => [58, 60, 82],
+            Tone::Label => [226, 229, 240],
+            Tone::Value => [125, 205, 255],
+            Tone::Bar => [44, 48, 72],
+            Tone::Live => [110, 220, 150],
+            Tone::Changed => [255, 196, 90],
+            Tone::Locked => [112, 116, 138],
+            Tone::Note => [255, 214, 120],
+            Tone::Link => [100, 104, 130],
+        }
+    }
+}
+
+/// A colour's bytes in the swap chain's format (`None`: a format the box is not drawn in).
+fn encode(format: DXGI_FORMAT, [r, g, b]: [u8; 3]) -> Option<Vec<u8>> {
+    Some(match format {
+        DXGI_FORMAT_R8G8B8A8_UNORM => vec![r, g, b, 0xFF],
+        DXGI_FORMAT_B8G8R8A8_UNORM => vec![b, g, r, 0xFF],
+        DXGI_FORMAT_R10G10B10A2_UNORM => {
+            let ten = |v: u8| u32::from(v) * 1023 / 255;
+            (ten(r) | ten(g) << 10 | ten(b) << 20 | 3 << 30).to_le_bytes().to_vec()
+        }
+        // Linear light in halves.
+        DXGI_FORMAT_R16G16B16A16_FLOAT => [linear(r), linear(g), linear(b), 1.0].into_iter().flat_map(|v| half(v).to_le_bytes()).collect(),
+        _ => return None,
+    })
+}
+
+/// An sRGB byte as linear light.
+fn linear(v: u8) -> f32 {
+    let c = f32::from(v) / 255.0;
+    if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+}
+
+/// A value from 0 to 1 as a half (smaller than a half's least normal: 0).
+fn half(v: f32) -> u16 {
+    if v <= 0.0 {
+        return 0;
+    }
+    let bits = v.to_bits();
+    let exponent = ((bits >> 23) & 0xFF) as i32 - 127 + 15;
+    if exponent <= 0 {
+        return 0;
+    }
+    ((exponent as u32) << 10 | (bits >> 13) & 0x3FF) as u16
+}
+
+/// What a line of the list is: a section's header, or a setting or action (`Menu::at`'s numbers).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Entry {
+    /// A blank before a section's header.
+    Gap,
+    Section(&'static str),
+    Line(usize),
+}
+
+/// The list as shown: the settings that apply, each section's header before its first, then
+/// the actions under their own header.
+fn entries() -> Vec<Entry> {
+    let mut out = Vec::new();
+    for (i, item) in ITEMS.iter().enumerate() {
+        if hidden(item) {
+            continue;
+        }
+        if let Some((_, title)) = SECTIONS.iter().find(|(var, _)| *var == item.var) {
+            if !out.is_empty() {
+                out.push(Entry::Gap);
+            }
+            out.push(Entry::Section(title));
+        }
+        out.push(Entry::Line(i));
+    }
+    out.push(Entry::Gap);
+    out.push(Entry::Section(ACTIONS_SECTION));
+    out.extend((0..ACTIONS.len()).map(|a| Entry::Line(ITEMS.len() + a)));
+    out
+}
+
+/// `text` in up to three lines of the box, broken between words.
+fn wrapped(text: &str) -> [String; 3] {
+    let mut out: [String; 3] = Default::default();
+    let mut n = 0;
+    for word in text.split_whitespace() {
+        if !out[n].is_empty() && out[n].len() + 1 + word.len() > COLUMNS as usize {
+            n += 1;
+            if n == out.len() {
+                break;
+            }
+        }
+        if !out[n].is_empty() {
+            out[n].push(' ');
+        }
+        out[n].push_str(word);
+    }
+    out
+}
+
+/// A title bar: `left` at its start, `right` at its end.
+fn title_line(left: &str, right: &str) -> Line {
+    let gap = (COLUMNS as usize).saturating_sub(left.len() + right.len() + 2);
+    Line::plain(&format!(" {left}{}{right} ", " ".repeat(gap)), Tone::Title, Tone::TitleBar)
+}
+
+/// A section's header: its title, then a rule to the edge.
+fn section_line(title: &str) -> Line {
+    let mut line = Line::new(Tone::Back);
+    line.push(&format!("  {title} "), Tone::Section);
+    let rest = (COLUMNS as usize).saturating_sub(line.text.len() + 1);
+    line.push(&"-".repeat(rest), Tone::Rule);
+    line
+}
 
 fn get(var: &str) -> String {
     std::env::var(var).unwrap_or_default()
@@ -291,12 +575,11 @@ fn index_of(item: &Item, value: &str) -> Option<usize> {
 }
 
 /// What the menu shows for `value`: its label, an unknown value as itself,
-/// and a value the launcher did not set (a start without play.ps1) as
-/// "NOT SET" rather than a blank.
+/// and a value the launcher did not set as "DEFAULT" (the build's own) rather than a blank.
 fn shown_value(item: &Item, value: &str) -> String {
     match index_of(item, value) {
         Some(i) => item.values[i].1.to_owned(),
-        None if value.is_empty() => "NOT SET".to_owned(),
+        None if value.is_empty() => "DEFAULT".to_owned(),
         None => value.to_ascii_uppercase(),
     }
 }
@@ -334,27 +617,45 @@ const fn size(scale: u32) -> (u32, u32) {
     ((COLUMNS * CELL.0 + 2 * RIM) * scale, (LINES * CELL.1 + 2 * RIM) * scale)
 }
 
-fn lit(lines: &[String], x: u32, y: u32) -> bool {
-    let (Some(x), Some(y)) = (x.checked_sub(RIM), y.checked_sub(RIM)) else {
-        return false;
-    };
-    if x % CELL.0 >= GLYPH.0 || y % CELL.1 >= GLYPH.1 || x / CELL.0 >= COLUMNS {
-        return false;
+/// The tone of the box's pixel (`x`, `y`) of `w` by `h` (unscaled). The menu has a frame and its
+/// title bar reaches the top; a single line (the frame-rate line) has neither.
+fn tone_at(lines: &[Line], x: u32, y: u32, (w, h): (u32, u32)) -> Tone {
+    let boxed = lines.len() > 1;
+    if boxed && (x == 0 || y == 0 || x + 1 == w || y + 1 == h) {
+        return Tone::Border;
     }
-    let Some(&c) = lines.get((y / CELL.1) as usize).and_then(|l| l.as_bytes().get((x / CELL.0) as usize)) else {
-        return false;
+    let row = y.checked_sub(RIM).map(|v| (v / CELL.1) as usize);
+    let Some(line) = row.map_or(lines.first(), |r| lines.get(r)) else {
+        return if boxed { Tone::Back } else { Tone::Black };
     };
-    (glyph(c.to_ascii_uppercase())[(y % CELL.1) as usize] >> (GLYPH.0 - 1 - x % CELL.0)) & 1 != 0
+    let (Some(cx), Some(cy)) = (x.checked_sub(RIM), y.checked_sub(RIM)) else {
+        return line.bg;
+    };
+    if cx % CELL.0 >= GLYPH.0 || cy % CELL.1 >= GLYPH.1 || cx / CELL.0 >= COLUMNS {
+        return line.bg;
+    }
+    let column = (cx / CELL.0) as usize;
+    let Some(&c) = line.text.as_bytes().get(column) else {
+        return line.bg;
+    };
+    if (glyph(c.to_ascii_uppercase())[(cy % CELL.1) as usize] >> (GLYPH.0 - 1 - cx % CELL.0)) & 1 != 0 {
+        line.fg.get(column).copied().unwrap_or(Tone::White)
+    } else {
+        line.bg
+    }
 }
 
-fn painted(lines: &[String], scale: u32, colours: [&[u8]; 2], pitch: usize) -> Vec<u8> {
+/// The box's picture in `format` (`None`: a format it is not drawn in).
+fn painted(lines: &[Line], scale: u32, format: DXGI_FORMAT, pitch: usize) -> Option<Vec<u8>> {
+    let palette = TONES.iter().map(|t| encode(format, t.rgb())).collect::<Option<Vec<_>>>()?;
     let (width, height) = size(scale);
-    let bytes = colours[0].len();
+    let (w, h) = (width / scale, height / scale);
+    let bytes = palette[0].len();
     let mut out = vec![0; pitch * height as usize];
-    for y in 0..height / scale {
+    for y in 0..h {
         let top = pitch * (y * scale) as usize;
-        for x in 0..width / scale {
-            let colour = colours[usize::from(lit(lines, x, y))];
+        for x in 0..w {
+            let colour = &palette[tone_at(lines, x, y, (w, h)) as usize];
             for i in 0..scale {
                 let at = top + (x * scale + i) as usize * bytes;
                 out[at..at + bytes].copy_from_slice(colour);
@@ -364,7 +665,7 @@ fn painted(lines: &[String], scale: u32, colours: [&[u8]; 2], pitch: usize) -> V
             out.copy_within(top..top + pitch, top + i * pitch);
         }
     }
-    out
+    Some(out)
 }
 
 struct Buffers {
@@ -386,7 +687,7 @@ unsafe impl Send for Buffers {}
 impl Buffers {
     fn new(host: &Host, format: DXGI_FORMAT, scale: u32) -> Option<Buffers> {
         let (width, height) = size(scale);
-        let pitch = (width * colours(format)?[0].len() as u32).next_multiple_of(256);
+        let pitch = (width * encode(format, [0; 3])?.len() as u32).next_multiple_of(256);
         let bytes = u64::from(pitch) * u64::from(height);
         let uploads = (0..UPLOADS).map(|_| host.upload_buffer(bytes)).collect::<Option<Vec<_>>>()?;
         let heap = D3D12_HEAP_PROPERTIES { Type: D3D12_HEAP_TYPE_DEFAULT, ..Default::default() };
@@ -410,9 +711,8 @@ impl Buffers {
         Some(Buffers { format, scale, pitch, uploads, card: card?, turn: 0, fresh: false, used: false })
     }
 
-    fn write(&mut self, lines: &[String]) {
-        let Some(colours) = colours(self.format) else { return };
-        let picture = painted(lines, self.scale, colours, self.pitch as usize);
+    fn write(&mut self, lines: &[Line]) {
+        let Some(picture) = painted(lines, self.scale, self.format, self.pitch as usize) else { return };
         self.turn = (self.turn + 1) % UPLOADS;
         // SAFETY: a mapped upload buffer of the picture's size, which the card read frames ago.
         unsafe { std::ptr::copy_nonoverlapping(picture.as_ptr(), self.uploads[self.turn].1, picture.len()) };
@@ -457,77 +757,142 @@ impl Menu {
         crate::SETTINGS_MENU_OPEN.load(Ordering::Relaxed)
     }
 
+    /// The box's lines as text (what the tests read).
     fn lines(&self) -> Vec<String> {
+        self.rows().into_iter().map(|l| l.text).collect()
+    }
+
+    /// The box's lines: a title bar, a help line, a blank, [`ROWS`] of the list (sections,
+    /// settings, actions) around the line picked, a blank, what the line picked does (three
+    /// lines), a note and the repository's link.
+    fn rows(&self) -> Vec<Line> {
         if self.picking {
-            return self.pick_lines();
+            return self.pick_rows();
         }
-        let total = ITEMS.len() + ACTIONS.len();
-        let first = self.at.saturating_sub(ROWS / 2).min(total.saturating_sub(ROWS));
         let mut out = vec![
-            "SETTINGS                       F1 OR ESC CLOSES".to_owned(),
-            "UP/DOWN PICK  LEFT/RIGHT CHANGE  ENTER DOES IT".to_owned(),
-            String::new(),
+            title_line("SETTINGS", "F1 OR ESC CLOSES"),
+            Line::plain(" UP/DOWN PICK    LEFT/RIGHT CHANGE    ENTER DOES IT", Tone::Muted, Tone::Back),
+            Line::new(Tone::Back),
         ];
-        for row in first..(first + ROWS).min(total) {
-            let cursor = if row == self.at { '>' } else { ' ' };
-            let line = if let Some(item) = ITEMS.get(row) {
-                let value = &self.values[row];
-                let shown = shown_value(item, value);
-                let mark = if *value != self.started[row] { if live(item) { " *LIVE" } else { " *" } } else if live(item) { " LIVE" } else { "" };
-                format!("{cursor} {:<27} < {shown} >{mark}", item.label)
-            } else {
-                format!("{cursor} {}", ACTIONS[row - ITEMS.len()])
-            };
-            out.push(line.chars().take(COLUMNS as usize).collect());
+        let list = entries();
+        let at = list.iter().position(|e| *e == Entry::Line(self.at)).unwrap_or(0);
+        let first = at.saturating_sub(ROWS / 2).min(list.len().saturating_sub(ROWS));
+        for entry in &list[first..(first + ROWS).min(list.len())] {
+            out.push(match *entry {
+                Entry::Gap => Line::new(Tone::Back),
+                Entry::Section(title) => section_line(title),
+                Entry::Line(row) => self.row(row),
+            });
         }
         while out.len() < 3 + ROWS {
-            out.push(String::new());
+            out.push(Line::new(Tone::Back));
         }
-        out.push(String::new());
-        let about = if self.at == ITEMS.len() + PRELOAD {
-            ABOUT_PRELOAD
-        } else if self.at == ITEMS.len() + EXPORT {
-            ABOUT_EXPORT
-        } else if self.at == ITEMS.len() + IMPORT {
-            ABOUT_IMPORT
-        } else if ITEMS.get(self.at).is_some_and(|i| i.var == MFG) {
-            ABOUT_MFG
-        } else if ITEMS.get(self.at).is_some_and(|i| i.var == DLSS)
-            && !matches!(self.values[self.at].as_str(), "" | "off")
-            && std::env::var_os("VICTORY_STREAMLINE_DIR").is_none()
-        {
-            ABOUT_NO_DLSS
-        } else {
-            [""; 3]
-        };
-        out.extend(about.iter().map(|l| (*l).to_owned()));
-        out.push(if self.note.is_empty() { "* = CHANGED: APPLIES AT THE NEXT START UNLESS LIVE".to_owned() } else { self.note.clone() });
-        out.push(REPO.to_owned());
+        out.push(Line::new(Tone::Back));
+        out.extend(self.about().iter().map(|l| Line::plain(l, Tone::Muted, Tone::Back)));
+        out.push(if self.note.is_empty() { Line::plain(FOOTER, Tone::Muted, Tone::Back) } else { Line::plain(&self.note, Tone::Note, Tone::Back) });
+        out.push(Line::plain(REPO, Tone::Link, Tone::Back));
         out
     }
 
+    /// A setting's or an action's line (`row`: `Menu::at`'s numbers).
+    fn row(&self, row: usize) -> Line {
+        let picked = row == self.at;
+        let mut line = Line::new(if picked { Tone::Bar } else { Tone::Back });
+        line.push(if picked { "> " } else { "  " }, Tone::Cursor);
+        let name = if picked { Tone::Picked } else { Tone::Label };
+        let Some(item) = ITEMS.get(row) else {
+            line.push(ACTIONS[row - ITEMS.len()], name);
+            return line;
+        };
+        line.push(&format!("{:<30}", item.label), name);
+        let value = &self.values[row];
+        let shown = shown_value(item, value);
+        if locked(item) {
+            line.push(&format!("  {shown}  LAUNCHER"), Tone::Locked);
+            return line;
+        }
+        line.push("< ", Tone::Muted);
+        line.push(&shown, Tone::Value);
+        line.push(" >", Tone::Muted);
+        if *value != self.started[row] {
+            line.push(" *", Tone::Changed);
+        }
+        if live(item) {
+            line.push(" LIVE", Tone::Live);
+        }
+        line
+    }
+
+    /// What the line picked does, in three lines.
+    fn about(&self) -> [String; 3] {
+        let fixed = |lines: [&str; 3]| lines.map(str::to_owned);
+        if let Some(action) = self.at.checked_sub(ITEMS.len()) {
+            return match action {
+                PRELOAD => fixed(ABOUT_PRELOAD),
+                EXPORT => fixed(ABOUT_EXPORT),
+                IMPORT => fixed(ABOUT_IMPORT),
+                other => wrapped(ABOUT_ACTIONS.get(other).copied().unwrap_or("")),
+            };
+        }
+        let item = &ITEMS[self.at];
+        if locked(item) {
+            let mut out = wrapped(item.about);
+            out[2] = LOCKED.to_owned();
+            return out;
+        }
+        if item.var == MFG {
+            return fixed(ABOUT_MFG);
+        }
+        if item.var == DLSS
+            && !matches!(self.values[self.at].as_str(), "" | "off")
+            && std::env::var_os("VICTORY_STREAMLINE_DIR").is_none()
+        {
+            return fixed(ABOUT_NO_DLSS);
+        }
+        wrapped(item.about)
+    }
+
     /// The list IMPORT SAVE opens, in the box's lines.
-    fn pick_lines(&self) -> Vec<String> {
-        let mut out = vec![PICK_TITLE.to_owned(), PICK_HELP.to_owned(), String::new()];
+    fn pick_rows(&self) -> Vec<Line> {
+        let mut out = vec![
+            Line::plain(&format!(" {PICK_TITLE}"), Tone::Title, Tone::TitleBar),
+            Line::plain(PICK_HELP, Tone::Muted, Tone::Back),
+            Line::new(Tone::Back),
+        ];
         if self.imports.is_empty() {
-            out.push(PICK_NONE.to_owned());
+            out.push(Line::plain(PICK_NONE, Tone::Note, Tone::Back));
         }
         let rows = ROWS - (out.len() - 3);
         let total = self.imports.len() + 1;
         let first = self.import_at.saturating_sub(rows / 2).min(total.saturating_sub(rows));
         for row in first..(first + rows).min(total) {
-            let cursor = if row == self.import_at { '>' } else { ' ' };
+            let picked = row == self.import_at;
             let name = self.imports.get(row).map_or_else(|| PICK_BACK.to_owned(), |n| shown_name(n));
-            out.push(format!("{cursor} {name}").chars().take(COLUMNS as usize).collect());
+            let mut line = Line::new(if picked { Tone::Bar } else { Tone::Back });
+            line.push(if picked { "> " } else { "  " }, Tone::Cursor);
+            line.push(&name, if picked { Tone::Picked } else { Tone::Label });
+            out.push(line);
         }
         while out.len() < 3 + ROWS {
-            out.push(String::new());
+            out.push(Line::new(Tone::Back));
         }
-        out.push(String::new());
-        out.extend(ABOUT_PICK.iter().map(|l| (*l).to_owned()));
-        out.push(if self.note.is_empty() { format!("{} IN SAVES", self.imports.len()) } else { self.note.clone() });
-        out.push(REPO.to_owned());
+        out.push(Line::new(Tone::Back));
+        out.extend(ABOUT_PICK.iter().map(|l| Line::plain(l, Tone::Muted, Tone::Back)));
+        let note = if self.note.is_empty() { format!("{} IN SAVES", self.imports.len()) } else { self.note.clone() };
+        out.push(Line::plain(&note, Tone::Note, Tone::Back));
+        out.push(Line::plain(REPO, Tone::Link, Tone::Back));
         out
+    }
+
+    /// Moves the line picked by `by` (+1 / -1), over the lines left out ([`hidden`]).
+    fn step(&mut self, by: isize) {
+        let total = (ITEMS.len() + ACTIONS.len()) as isize;
+        for _ in 0..total {
+            self.at = (self.at as isize + by).rem_euclid(total) as usize;
+            if !ITEMS.get(self.at).is_some_and(hidden) {
+                break;
+            }
+        }
     }
 
     /// Changes item `i` by `step` (+1 / -1) through its values.
@@ -597,6 +962,9 @@ impl Menu {
                 self.started = self.values.clone();
                 self.note = if std::env::var_os("VICTORY_MENU_FILE").is_some() {
                     "SAVED. APPLIES AT THE NEXT START"
+                } else if by_launcher() {
+                    // Julia's Launcher applies the file's switches at its next PLAY.
+                    "SAVED. APPLIES AT THE NEXT PLAY"
                 } else {
                     // Started some other way (a script, another launcher): the file `victory play`
                     // reads at every start, which this start did not.
@@ -768,6 +1136,10 @@ impl Menu {
     /// Changes a setting and saves it at once: many players changed settings and closed the
     /// menu without the save lines, and lost them. The save lines stay (and restart, preload).
     fn change_and_save(&mut self, i: usize, step: isize) {
+        if locked(&ITEMS[i]) {
+            self.note = LOCKED.to_owned();
+            return;
+        }
         self.change(i, step);
         if self.save() && live(&ITEMS[i]) {
             self.note = "SAVED. ON NOW".to_owned();
@@ -781,7 +1153,6 @@ impl Menu {
         if pressed.is_empty() {
             return;
         }
-        let total = ITEMS.len() + ACTIONS.len();
         for vk in pressed {
             let open = Self::open();
             // Esc in the list of saves goes back to the settings.
@@ -823,8 +1194,8 @@ impl Menu {
                 continue;
             }
             match vk {
-                VK_UP => self.at = (self.at + total - 1) % total,
-                VK_DOWN => self.at = (self.at + 1) % total,
+                VK_UP => self.step(-1),
+                VK_DOWN => self.step(1),
                 VK_LEFT if self.at < ITEMS.len() => self.change_and_save(self.at, -1),
                 VK_RIGHT if self.at < ITEMS.len() => self.change_and_save(self.at, 1),
                 VK_RETURN if self.at < ITEMS.len() => self.change_and_save(self.at, 1),
@@ -883,7 +1254,7 @@ impl Menu {
             self.painted = line.clone();
             self.changed = true;
         }
-        let lines = if self.changed { Some(line.as_ref().map_or_else(|| self.lines(), |l| vec![l.clone()])) } else { None };
+        let lines = if self.changed { Some(line.as_ref().map_or_else(|| self.rows(), |l| vec![Line::plain(l, Tone::White, Tone::Black)])) } else { None };
         let Some(buffers) = &mut self.buffers else { return };
         if let Some(lines) = lines {
             self.changed = false;
@@ -993,8 +1364,12 @@ mod tests {
                     assert_eq!(about, ABOUT_IMPORT);
                 } else if at < ITEMS.len() && ITEMS[at].var == MFG {
                     assert_eq!(about, ABOUT_MFG);
+                } else if at < ITEMS.len() {
+                    // Every setting says what it does.
+                    assert_eq!(about, wrapped(ITEMS[at].about), "{}", ITEMS[at].label);
+                    assert!(!about[0].is_empty(), "{}", ITEMS[at].label);
                 } else {
-                    assert!(about.iter().all(String::is_empty), "{about:?}");
+                    assert_eq!(about, wrapped(ABOUT_ACTIONS[at - ITEMS.len()]));
                 }
             }
         }
@@ -1019,7 +1394,7 @@ mod tests {
         assert_eq!(&lines[lines.len() - 5..lines.len() - 2], ABOUT_NO_DLSS);
         menu.values[dlss] = "off".to_owned();
         let lines = menu.lines();
-        assert!(lines[lines.len() - 5..lines.len() - 2].iter().all(String::is_empty));
+        assert_eq!(&lines[lines.len() - 5..lines.len() - 2], wrapped(ITEMS[dlss].about));
         assert_eq!(ITEMS.iter().filter(|i| i.var == MFG).count(), 1);
     }
 
@@ -1072,5 +1447,76 @@ mod tests {
         let lines = check(&menu);
         assert!(lines.iter().any(|l| l == PICK_NONE));
         assert!(lines.iter().any(|l| l == &format!("> {PICK_BACK}")));
+    }
+    #[test]
+    fn every_setting_says_what_it_does_in_three_lines_or_less() {
+        for item in ITEMS {
+            let words: Vec<&str> = item.about.split_whitespace().collect();
+            let shown: Vec<String> = wrapped(item.about).iter().flat_map(|l| l.split_whitespace().map(str::to_owned).collect::<Vec<_>>()).collect();
+            assert_eq!(words.len(), shown.len(), "{}: too long for three lines", item.label);
+            assert!(item.about.bytes().all(|c| glyph(c) != glyph(b'#')), "{}", item.label);
+        }
+        for about in ABOUT_ACTIONS.iter().chain([&LOCKED, &FOOTER]) {
+            assert!(about.bytes().all(|c| glyph(c) != glyph(b'#')), "{about}");
+        }
+    }
+
+    #[test]
+    fn sections_come_before_their_settings_and_every_setting_is_listed_once() {
+        let list = entries();
+        // Not started by the launcher in tests: every setting and every action is there.
+        for at in 0..ITEMS.len() + ACTIONS.len() {
+            assert_eq!(list.iter().filter(|e| **e == Entry::Line(at)).count(), 1, "{at}");
+        }
+        for (var, title) in SECTIONS {
+            let i = ITEMS.iter().position(|item| item.var == *var).expect("a section starts at a setting");
+            let at = list.iter().position(|e| *e == Entry::Line(i)).expect("listed");
+            assert_eq!(list[at - 1], Entry::Section(title));
+        }
+        assert_eq!(list[0], Entry::Section(SECTIONS[0].1));
+    }
+
+    #[test]
+    fn the_box_is_painted_in_its_colours_in_every_format() {
+        let menu = Menu { values: ITEMS.iter().map(|_| String::new()).collect(), started: ITEMS.iter().map(|_| String::new()).collect(), at: 0, note: String::new(), changed: false, painted: None, buffers: None, failed: false, imports: Vec::new(), import_at: 0, picking: false };
+        let rows = menu.rows();
+        assert_eq!(rows.len(), LINES as usize);
+        assert!(rows.iter().all(|r| r.text.len() == r.fg.len()));
+        for format in [DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_R16G16B16A16_FLOAT] {
+            let bytes = encode(format, [0; 3]).expect("drawn in this format").len();
+            let pitch = (size(1).0 as usize * bytes).next_multiple_of(256);
+            let picture = painted(&rows, 1, format, pitch).expect("painted");
+            assert_eq!(picture.len(), pitch * size(1).1 as usize);
+            // The frame's corner, the title bar under it, and the box's back are the colours set.
+            assert_eq!(&picture[..bytes], encode(format, Tone::Border.rgb()).unwrap().as_slice());
+            let title = pitch * (RIM + 1) as usize + bytes * (RIM as usize + CELL.0 as usize * (COLUMNS as usize - 1));
+            assert_eq!(&picture[title..title + bytes], encode(format, Tone::TitleBar.rgb()).unwrap().as_slice());
+        }
+        // Halves: 1 is 0x3C00, 0 is 0.
+        assert_eq!((half(1.0), half(0.0)), (0x3C00, 0));
+        assert_eq!(encode(DXGI_FORMAT_B8G8R8A8_UNORM, [1, 2, 3]), Some(vec![3, 2, 1, 0xFF]));
+        assert_eq!(encode(DXGI_FORMAT_R32G32B32A32_FLOAT, [0; 3]), None);
+    }
+    /// `VICTORY_MENU_DUMP=<folder> cargo test -p victory-gpu --lib dump_the_menu -- --ignored`: the
+    /// box as the game shows it, in `menu.ppm` and `menu-picked-action.ppm` there (to look at a change).
+    #[test]
+    #[ignore = "writes pictures; run by hand"]
+    fn dump_the_menu() {
+        let Some(folder) = std::env::var_os("VICTORY_MENU_DUMP") else { return };
+        let folder = std::path::PathBuf::from(folder);
+        let mut menu = Menu { values: ITEMS.iter().map(|i| i.values[0].0.to_owned()).collect(), started: ITEMS.iter().map(|i| i.values[0].0.to_owned()).collect(), at: 2, note: String::new(), changed: false, painted: None, buffers: None, failed: false, imports: Vec::new(), import_at: 0, picking: false };
+        menu.values[1] = "k".to_owned();
+        for (name, at) in [("menu.ppm", 2), ("menu-picked-action.ppm", ITEMS.len() + PRELOAD)] {
+            menu.at = at;
+            let (w, h) = size(2);
+            let pitch = (w * 4) as usize;
+            let picture = painted(&menu.rows(), 2, DXGI_FORMAT_R8G8B8A8_UNORM, pitch).expect("painted");
+            let mut ppm = format!("P6 {w} {h} 255
+").into_bytes();
+            for px in picture.chunks(4) {
+                ppm.extend_from_slice(&px[..3]);
+            }
+            std::fs::write(folder.join(name), ppm).expect("written");
+        }
     }
 }
