@@ -1,6 +1,4 @@
-Julia's Launcher 0.3.19: updates mais seguros, um Preparar honesto, e as definições que o jogo recebeu mesmo.
+Julia's Launcher 0.3.20: diz que ficheiro do jogo falta.
 
-- Os updates instalam-se de uma vez: cada ficheiro é primeiro copiado ao lado do antigo e só depois trocado. Se algo falhar (disco cheio, um ficheiro em uso), todos os ficheiros voltam à versão anterior e o update é tentado mais tarde; nunca fica uma mistura de duas versões. Também verifica antes se há espaço livre.
-- Preparar: uma verificação que não pôde correr (sem acesso, WMI, um ficheiro que não se leu) mostra agora "Nao verificado" em vez de "Nao preciso", e o Preparar já não diz "Esta tudo pronto" por cima disso.
-- O log de cada jogo começa com as definições com que arrancou mesmo, e marca as que foram mudadas no menu F1. A atividade diz quando o F1 muda uma escolha do launcher (o F1 ganha; RESET ALL no F1 repõe-nas).
-- A correção da 0.3.18 para placas de 8 GB mantém-se.
+- Quando falta na pasta do jogo uma das DLLs do próprio jogo (amd_fidelityfx_loader_xbox.dll, bink2scarlett.dll, libhttpclient.gdk.dll ou xboxbvhbuilder.dll), o launcher diz agora qual antes do JOGAR, e outra vez se o jogo fechar por causa disso, em vez de só "codigo 1". Copia o ficheiro em falta do pacote completo do jogo para junto do .exe do jogo.
+- Um arranque assim já não conta como falha do motor: as placas AMD já não passam para o motor do Belobug por causa de um ficheiro do jogo em falta.

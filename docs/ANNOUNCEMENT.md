@@ -1,10 +1,7 @@
-## Julia's Launcher {tag} is out 🛡️
+## Julia's Launcher {tag} is out 🧩
 **Fixes**
-🛡️ **Safer updates**: files are swapped as one piece; if anything fails, the previous version comes back whole and the update is tried again.
-🩺 **Setup is honest**: a check that could not run says "Could not check" instead of "Not needed".
-📋 Each game's log lists the settings it really started with, and which ones the F1 menu changed.
-
-The 0.3.18 fix for crashes on 8 GB cards stays.
+🧩 Game closes at once with "code 1"? The launcher now **names the missing game file** (for example amd_fidelityfx_loader_xbox.dll) before PLAY. Copy it from the complete game package next to the game's .exe.
+🔁 A missing game file no longer moves AMD cards to another engine.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.

@@ -2293,7 +2293,16 @@ namespace VIctoryLauncher
                     gameProc = null;
                     if (code != 0)
                         Log(string.Format(L("The game ended with an error (code {0}). Log: {1}", "O jogo terminou com um erro (codigo {0}). Log: {1}"), code, log));
-                    EngineFallback(code != 0 && (DateTime.Now - started).TotalMinutes < 3);
+                    // The game's package without its own DLLs (VIctory says which in the log): the player has to copy
+                    // them, and no engine runs it, so it does not count against this one (VI-F2TB-8822, 28/11/2026: a
+                    // missing amd_fidelityfx_loader_xbox.dll showed as "code 1" and moved an RX 6500 XT to Belobug's engine).
+                    var absentDlls = code != 0 ? MissingDllsInLog(log) : null;
+                    if (absentDlls != null)
+                        Log(string.Format(L("The game's folder is missing its own files: {0}. Copy them from the complete game package next to the game's .exe ({1}), then press PLAY again.",
+                            "Faltam ficheiros do proprio jogo na pasta: {0}. Copia-os do pacote completo do jogo para junto do .exe do jogo ({1}) e carrega em JOGAR outra vez.",
+                            "Il manque des fichiers du jeu lui-même dans son dossier : {0}. Copie-les depuis le paquet complet du jeu à côté du .exe du jeu ({1}), puis appuie de nouveau sur JOUER."),
+                            string.Join(", ", absentDlls), Path.GetDirectoryName(game)));
+                    EngineFallback(absentDlls == null && code != 0 && (DateTime.Now - started).TotalMinutes < 3);
                     if (ClosingNow()) return;
                     Log(L("Game closed. Preparing this session's pipelines for the next one...", "Jogo fechado. A preparar as pipelines desta sessao para a proxima..."));
                     var w = Start("warm --used", log);

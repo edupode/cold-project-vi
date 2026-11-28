@@ -19,6 +19,9 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.20",
+            "  •  Names the missing game file (a DLL of the game) instead of only 'code 1'; AMD cards stay on their engine.",
+            "",
             "IN 0.3.19",
             "  •  Safer updates: if anything fails, the previous version comes back whole.",
             "  •  Setup says 'Could not check' when a check fails, not 'Not needed'.",
@@ -112,6 +115,9 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.20",
+            "  •  Diz que ficheiro do jogo falta (uma DLL do jogo) em vez de so 'codigo 1'; as AMD ficam no seu motor.",
+            "",
             "NA 0.3.19",
             "  •  Updates mais seguros: se algo falhar, a versao anterior volta inteira.",
             "  •  O Preparar diz 'Nao verificado' quando uma verificacao falha, nao 'Nao preciso'.",
@@ -205,6 +211,9 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.20",
+            "  •  Nomme le fichier du jeu manquant (une DLL du jeu) au lieu de « code 1 » ; les AMD gardent leur moteur.",
+            "",
             "DANS LA 0.3.19",
             "  •  Mises à jour plus sûres : en cas d'échec, la version précédente revient entière.",
             "  •  L'installation affiche « Non vérifié » quand une vérification échoue, pas « Inutile ».",

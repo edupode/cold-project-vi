@@ -75,6 +75,8 @@ included.**
   and crashed 8 GB / 16 GB RAM PCs a few minutes in.
 - **Launcher (0.3.19):** updates swap all files as one piece and roll back if anything fails; Setup shows "Could not
   check" instead of "Not needed" when a check fails; each game's log lists the settings it really used and which F1 changed.
+- **Missing game files (0.3.20):** the launcher names a missing DLL of the game (e.g. amd_fidelityfx_loader_xbox.dll)
+  before PLAY instead of a bare "code 1", and such a start no longer moves AMD cards to another engine.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.

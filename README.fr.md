@@ -51,6 +51,8 @@ du jeu n'est inclus.**
   remplissait la mémoire du PC et faisait planter les PC à 8 Go / 16 Go de RAM au bout de quelques minutes.
 - **Lanceur (0.3.19) :** les mises à jour remplacent tous les fichiers d'un coup et reviennent en arrière en cas d'échec ;
   l'installation affiche « Non vérifié » au lieu de « Inutile » quand une vérification échoue ; le journal de chaque partie liste les réglages utilisés et ceux changés par F1.
+- **Fichiers du jeu manquants (0.3.20) :** le lanceur nomme la DLL du jeu manquante (ex. amd_fidelityfx_loader_xbox.dll)
+  avant JOUER au lieu d'un simple « code 1 », et un tel lancement ne fait plus passer les cartes AMD sur un autre moteur.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.
