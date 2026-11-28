@@ -19,6 +19,11 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.19",
+            "  •  Safer updates: if anything fails, the previous version comes back whole.",
+            "  •  Setup says 'Could not check' when a check fails, not 'Not needed'.",
+            "  •  Each game's log lists the settings it really used, and which ones F1 changed.",
+            "",
             "IN 0.3.18",
             "  •  Fewer crashes on 8 GB cards and 16 GB PCs: no new textures while the card is out of memory.",
             "",
@@ -107,6 +112,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.19",
+            "  •  Updates mais seguros: se algo falhar, a versao anterior volta inteira.",
+            "  •  O Preparar diz 'Nao verificado' quando uma verificacao falha, nao 'Nao preciso'.",
+            "  •  O log de cada jogo lista as definicoes que usou mesmo, e quais o F1 mudou.",
+            "",
             "NA 0.3.18",
             "  •  Menos crashes em placas de 8 GB e PCs de 16 GB: sem texturas novas enquanto a placa esta sem memoria.",
             "",
@@ -195,6 +205,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.19",
+            "  •  Mises à jour plus sûres : en cas d'échec, la version précédente revient entière.",
+            "  •  L'installation affiche « Non vérifié » quand une vérification échoue, pas « Inutile ».",
+            "  •  Le journal de chaque partie liste les réglages utilisés, et ceux que F1 a changés.",
+            "",
             "DANS LA 0.3.18",
             "  •  Moins de crashs sur les cartes de 8 Go et les PC à 16 Go : plus de nouvelles textures quand la carte est pleine.",
             "",

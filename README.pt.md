@@ -48,6 +48,8 @@ e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
   geração de frames e o limite de FPS ficam com o launcher). **F3:** o painel de estatísticas, em todos os builds.
 - **Placas de 8 GB (0.3.18):** sem texturas novas enquanto a placa passa o orçamento de memória; o excesso enchia a
   memória do PC e crashava PCs de 8 GB / 16 GB de RAM ao fim de poucos minutos.
+- **Launcher (0.3.19):** os updates trocam todos os ficheiros de uma vez e revertem se algo falhar; o Preparar mostra
+  "Nao verificado" em vez de "Nao preciso" quando uma verificação falha; o log de cada jogo lista as definições usadas e quais o F1 mudou.
 - **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
 - **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
   `victory.exe` novo aquece e arranca de novo uma vez, sozinho.

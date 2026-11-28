@@ -1,4 +1,6 @@
-Julia's Launcher 0.3.18: menos crashes nas placas de 8 GB.
+Julia's Launcher 0.3.19: updates mais seguros, um Preparar honesto, e as definições que o jogo recebeu mesmo.
 
-- Placas com 8 GB ou menos (e PCs com 16 GB de RAM) podiam crashar ao fim de poucos minutos: continuavam a ser criadas texturas novas quando a placa já tinha passado a memória que o Windows lhe dá, porque o espaço vazio dentro de blocos de texturas meio vazios contava como espaço livre. O excesso ia para a memória do PC até essa acabar também (erros 0x8007000E e depois 0x887A0005). Agora nenhuma textura nova é criada enquanto a placa estiver acima do orçamento; esperam até haver espaço.
-- O resto da 0.3.17 fica igual.
+- Os updates instalam-se de uma vez: cada ficheiro é primeiro copiado ao lado do antigo e só depois trocado. Se algo falhar (disco cheio, um ficheiro em uso), todos os ficheiros voltam à versão anterior e o update é tentado mais tarde; nunca fica uma mistura de duas versões. Também verifica antes se há espaço livre.
+- Preparar: uma verificação que não pôde correr (sem acesso, WMI, um ficheiro que não se leu) mostra agora "Nao verificado" em vez de "Nao preciso", e o Preparar já não diz "Esta tudo pronto" por cima disso.
+- O log de cada jogo começa com as definições com que arrancou mesmo, e marca as que foram mudadas no menu F1. A atividade diz quando o F1 muda uma escolha do launcher (o F1 ganha; RESET ALL no F1 repõe-nas).
+- A correção da 0.3.18 para placas de 8 GB mantém-se.

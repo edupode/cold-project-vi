@@ -360,7 +360,8 @@ namespace VIctoryLauncher
             public int NodeY;
             public Label Text, Detail;
             public Pill Button;
-            public int State = -2;       // -2: not checked yet
+            public int State = -2;       // -2: not checked yet; -1: not needed on this PC; -3: the check itself failed
+            public string CheckError;    // why the last check failed (State -3)
         }
 
         readonly List<Step> steps = new List<Step>();
@@ -471,12 +472,15 @@ namespace VIctoryLauncher
         void ShowSummary()
         {
             if (setupHead == null) return;
+            // A step whose check failed counts as known and not ready: "Everything is ready" never rests on it.
             int known = steps.Count(s => s.State != -1 && s.State != -2), ready = steps.Count(s => s.State == 1);
+            int notChecked = steps.Count(s => s.State == -3);
             setupHead.RightValue = known == 0
                 ? L("Checking your PC...", "A verificar o teu PC...", "Vérification de ton PC...")
                 : ready == known
                     ? L("Everything is ready.", "Esta tudo pronto.", "Tout est prêt.")
-                    : string.Format(L("{0} of {1} ready", "{0} de {1} prontos", "{0} sur {1} prêts"), ready, known);
+                    : string.Format(L("{0} of {1} ready", "{0} de {1} prontos", "{0} sur {1} prêts"), ready, known)
+                        + (notChecked > 0 ? string.Format(L(", {0} could not be checked", ", {0} por verificar", ", {0} non vérifiés"), notChecked) : "");
             setupHead.RightColor = known > 0 && ready == known ? Theme.Good : Theme.Cyan;
             // The line down the nodes fills as far as the steps are done in a row (a step this PC does not need passes).
             if (tline != null)
@@ -612,12 +616,25 @@ namespace VIctoryLauncher
             new Thread(() => {
                 foreach (var st in steps)
                 {
-                    int s;
-                    try { s = st.Check(); } catch (Exception) { s = -1; }
                     var me = st;
+                    int s = CheckStep(st);
                     Post(() => PaintStep(me, s));
                 }
             }) { IsBackground = true }.Start();
+        }
+
+        // A step's check: its state, or -3 when the check itself threw (no access, WMI, a file that could not be read).
+        // That used to be -1 and showed as "Not needed", so a PC whose check failed looked ready (28/11/2026).
+        int CheckStep(Step st)
+        {
+            try { st.CheckError = null; return st.Check(); }
+            catch (Exception e)
+            {
+                bool first = st.CheckError == null;
+                st.CheckError = e.Message;
+                if (first) Log(st.Title + ": " + L("could not be checked", "nao foi possivel verificar", "vérification impossible") + " (" + e.Message + ")");
+                return -3;
+            }
         }
 
         void PaintStep(Step st, int state)
@@ -629,8 +646,10 @@ namespace VIctoryLauncher
         void PaintStep(Step st, int state, bool failed)
         {
             st.State = state;
-            int kind = state == 1 ? 1 : state == 0 ? (failed ? 5 : 0) : 3;
-            string word = kind == 1 ? L("Done", "Feito", "Fait") : kind == 5 ? L("Not done", "Nao feito", "Pas fait") : kind == 0 ? L("To do", "Por fazer", "À faire") : L("Not needed", "Nao preciso", "Inutile");
+            int kind = state == 1 ? 1 : state == 0 ? (failed ? 5 : 0) : state == -3 ? 5 : 3;
+            string word = kind == 1 ? L("Done", "Feito", "Fait")
+                : state == -3 ? L("Could not check", "Nao verificado", "Non vérifié")
+                : kind == 5 ? L("Not done", "Nao feito", "Pas fait") : kind == 0 ? L("To do", "Por fazer", "À faire") : L("Not needed", "Nao preciso", "Inutile");
             st.Badge.Set(kind, word);
             st.Chip.Set(kind, word);
             // The step still to do gets the accent button; a finished one a quiet outline.
@@ -671,15 +690,14 @@ namespace VIctoryLauncher
                 {
                     i++;
                     var me = st;
-                    int now;
-                    try { now = st.Check(); } catch (Exception) { now = -1; }
+                    int now = CheckStep(st);
                     if (now == 1 && which.Length > 1) { Post(() => PaintStep(me, 1)); continue; }
                     if (ClosingNow()) break; // the window is closing: no further step starts
                     Progress(string.Format("{0} ({1}/{2})...", st.Title, i, which.Length), (float)(i - 1) / which.Length);
                     Post(() => MarkRunning(me));
                     bool ok;
                     try { ok = st.Fix(); } catch (Exception e) { ok = false; Log(st.Title + ": " + e.Message); }
-                    try { now = st.Check(); } catch (Exception) { now = -1; }
+                    now = CheckStep(st);
                     bool tried = ok;
                     Post(() => PaintStep(me, now, !tried));
                     Log((now == 1 ? "✓ " : ok ? "• " : "✗ ") + st.Title);

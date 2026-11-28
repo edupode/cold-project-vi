@@ -73,6 +73,8 @@ included.**
   the frame generation engine and the frame cap stay the launcher's). **F3:** the stats panel, in every build.
 - **8 GB cards (0.3.18):** no new textures while the card is past its memory budget; the overflow filled the PC's memory
   and crashed 8 GB / 16 GB RAM PCs a few minutes in.
+- **Launcher (0.3.19):** updates swap all files as one piece and roll back if anything fails; Setup shows "Could not
+  check" instead of "Not needed" when a check fails; each game's log lists the settings it really used and which F1 changed.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.

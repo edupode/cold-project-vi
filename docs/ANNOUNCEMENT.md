@@ -1,8 +1,10 @@
-## Julia's Launcher {tag} is out 🩹
+## Julia's Launcher {tag} is out 🛡️
 **Fixes**
-💥 **Fewer crashes on 8 GB cards** (and PCs with 16 GB of RAM): the game no longer keeps adding textures once the card is out of memory, which spilled into the PC's memory until the game crashed a few minutes in.
+🛡️ **Safer updates**: files are swapped as one piece; if anything fails, the previous version comes back whole and the update is tried again.
+🩺 **Setup is honest**: a check that could not run says "Could not check" instead of "Not needed".
+📋 Each game's log lists the settings it really started with, and which ones the F1 menu changed.
 
-Everything new in 0.3.17 stays: the VIctory-NVIDIA merge, more frame generation choices, the new F1 menu and themes.
+The 0.3.18 fix for crashes on 8 GB cards stays.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.

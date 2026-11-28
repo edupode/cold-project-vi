@@ -49,6 +49,8 @@ du jeu n'est inclus.**
   (seuls le moteur de génération d'images et la limite d'images restent au launcher). **F3 :** le panneau de statistiques, dans tous les builds.
 - **Cartes de 8 Go (0.3.18) :** plus de nouvelles textures quand la carte dépasse son budget de mémoire ; le surplus
   remplissait la mémoire du PC et faisait planter les PC à 8 Go / 16 Go de RAM au bout de quelques minutes.
+- **Lanceur (0.3.19) :** les mises à jour remplacent tous les fichiers d'un coup et reviennent en arrière en cas d'échec ;
+  l'installation affiche « Non vérifié » au lieu de « Inutile » quand une vérification échoue ; le journal de chaque partie liste les réglages utilisés et ceux changés par F1.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

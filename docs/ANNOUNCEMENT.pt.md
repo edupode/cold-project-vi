@@ -1,10 +1,12 @@
-## Julia's Launcher 0.3.18 já saiu 🩹
+## Julia's Launcher 0.3.19 já saiu 🛡️
 
 **Correções**
-💥 **Menos crashes em placas de 8 GB** (e PCs com 16 GB de RAM): o jogo já não continua a juntar texturas quando a placa fica sem memória, o que enchia a memória do PC até o jogo crashar ao fim de poucos minutos.
+🛡️ **Updates mais seguros**: os ficheiros são trocados de uma vez; se algo falhar, a versão anterior volta inteira e o update é tentado outra vez.
+🩺 **O Preparar não engana**: uma verificação que não pôde correr diz "Nao verificado" em vez de "Nao preciso".
+📋 O log de cada jogo lista as definições com que arrancou mesmo, e quais o menu F1 mudou.
 
-Fica tudo o que a 0.3.17 trouxe: o fork VIctory-NVIDIA, mais escolhas de geração de frames, o menu F1 novo e os temas.
+A correção da 0.3.18 para os crashes em placas de 8 GB mantém-se.
 
 **Instalar**
 🔄 Na 0.3.x: nada a fazer, instala-se sozinha em 5 minutos com o jogo fechado.
-📥 Novo ou com um launcher antigo: descarrega o **VI-Setup-0.3.18.exe** em https://github.com/felicienradio/cold-project-vi/releases/latest e abre-o.
+📥 Novo ou com um launcher antigo: descarrega o **VI-Setup-0.3.19.exe** em https://github.com/felicienradio/cold-project-vi/releases/latest e abre-o.

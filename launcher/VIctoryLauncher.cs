@@ -2031,7 +2031,9 @@ namespace VIctoryLauncher
         // The switches changed in the game's F1 menu, over the preset's: every VICTORY_ line of
         // %LOCALAPPDATA%\victory\victory-settings.txt but the launcher's own choices (VICTORY_MENU_..., MFG Unlocker),
         // which the Play page makes. An empty value unsets it; "RESET ALL" in F1 deletes the file. Logged once.
-        bool menuFileLogged;
+        string menuFileLogged;
+        // The switches the last read of the F1 menu's file set (the session log marks them "F1").
+        volatile HashSet<string> menuKeys = new HashSet<string>();
         void ApplyMenuFile(Dictionary<string, string> e)
         {
             try
@@ -2039,6 +2041,8 @@ namespace VIctoryLauncher
                 var file = Path.Combine(VictoryHome, "victory-settings.txt");
                 if (!File.Exists(file)) return;
                 var applied = new List<string>();
+                var overrides = new List<string>();
+                var keys = new HashSet<string>();
                 foreach (var raw in File.ReadAllLines(file))
                 {
                     var line = raw.Trim();
@@ -2049,13 +2053,23 @@ namespace VIctoryLauncher
                     var v = line.Substring(i + 1).Trim();
                     if (!k.StartsWith("VICTORY_") || k.StartsWith("VICTORY_MENU_") || k == "VICTORY_MFG_UNLOCKER"
                         || k == "VICTORY_GAME_DIR" || k == "VICTORY_DATA_DIR" || k == "VICTORY_CACHE_DIR") continue;
+                    string before;
+                    bool had = e.TryGetValue(k, out before);
+                    // F1 wins over the launcher: said where it changes what the launcher chose.
+                    if (had && before != v) overrides.Add(k + ": " + L("launcher", "launcher", "lanceur") + " " + before + " → F1 " + (v.Length == 0 ? L("(unset)", "(apagado)", "(retiré)") : v));
                     if (v.Length == 0) e.Remove(k); else e[k] = v;
                     applied.Add(k + "=" + v);
+                    keys.Add(k);
                 }
-                if (applied.Count > 0 && !menuFileLogged)
+                menuKeys = keys;
+                // Said again whenever what F1 changes is not what was said last (not only once per launcher).
+                var said = string.Join(" ", applied.ToArray()) + "|" + string.Join(";", overrides.ToArray());
+                if (applied.Count > 0 && said != menuFileLogged)
                 {
-                    menuFileLogged = true;
+                    menuFileLogged = said;
                     Log(L("Settings from the game's F1 menu: ", "Definicoes do menu F1 do jogo: ", "Réglages du menu F1 du jeu : ") + string.Join(" ", applied.ToArray()));
+                    if (overrides.Count > 0)
+                        Log(L("F1 changes over the launcher's choices (F1 wins; RESET ALL in F1 gives them back): ", "O F1 muda escolhas do launcher (o F1 ganha; RESET ALL no F1 repoe-as): ", "F1 change des choix du lanceur (F1 l'emporte ; RESET ALL dans F1 les rend) : ") + string.Join("; ", overrides.ToArray()));
                 }
             }
             catch (Exception) { }
@@ -2118,9 +2132,23 @@ namespace VIctoryLauncher
             // The window is closing (its tools were just stopped): nothing new starts. The callers catch this.
             if (ClosingNow()) throw new InvalidOperationException(L("The launcher is closing.", "O launcher esta a fechar.", "Le lanceur se ferme."));
             var psi = new ProcessStartInfo(VictoryExe, args) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, WorkingDirectory = UseAmdEngine ? AmdEngineDir : root };
-            foreach (var kv in Environment2()) psi.EnvironmentVariables[kv.Key] = kv.Value;
+            var env = Environment2();
+            foreach (var kv in env) psi.EnvironmentVariables[kv.Key] = kv.Value;
             Directory.CreateDirectory(Path.GetDirectoryName(logFile));
             var writer = new StreamWriter(logFile, true, new UTF8Encoding(false)) { AutoFlush = true };
+            // The settings the game really starts with, and where each came from: the launcher (its page and
+            // preset) or the F1 menu over it. The page, F1 and this list then always tell the same story.
+            if (args.StartsWith("run "))
+            {
+                var f1 = menuKeys;
+                try
+                {
+                    writer.WriteLine("# effective settings (" + (UseAmdEngine ? "AMD engine" : "engine " + ReadSetting("engine")) + "; [F1] = changed in the game's F1 menu, over the launcher):");
+                    foreach (var kv in env.Where(kv => kv.Key.StartsWith("VICTORY_")).OrderBy(kv => kv.Key, StringComparer.Ordinal))
+                        writer.WriteLine("#   " + kv.Key + "=" + kv.Value + (f1.Contains(kv.Key) ? "   [F1]" : ""));
+                }
+                catch (Exception) { }
+            }
             var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
             DataReceivedEventHandler sink = (s, e) => {
                 if (e.Data == null) return;
