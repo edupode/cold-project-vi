@@ -80,3 +80,31 @@ The token, once:
    date (renew it before then).
 2. `wrangler secret put GITHUB_TOKEN` (paste it when asked), then `wrangler deploy`.
    The token can only open and edit issues on that one repository. Pass it privately, never in a channel.
+
+## The team's read-only API (collaborators)
+
+`src/team.js`, a Worker of its own (`wrangler.team.toml`), lets the collaborators of `felicienradio/cold-project-vi`
+(write access or more) read the bug reports, without the Cloudflare account. It changes and deletes nothing.
+
+- **Who gets in:** each request carries the caller's own GitHub token (`Authorization: Bearer $(gh auth token)`); the
+  Worker asks GitHub who that is and whether they have push access to `TEAM_REPO`. Logins in `TEAM_EXTRA` get in too.
+  A token is checked with GitHub once every 10 minutes.
+- **What they read:** only reports received from `TEAM_FROM` on (UTC). Until now players were told only edupode reads
+  their logs; set `TEAM_FROM` to the publishing time of the launcher release that tells them the project's team does,
+  never earlier. Empty, the API serves nothing. The hardware table is not served.
+- **Every read is logged** in `team_log` (login, time, path): `SELECT * FROM team_log ORDER BY n DESC`.
+
+Routes: `GET /v1/me`, `GET /v1/reports?id=&kind=&since=&before=&limit=`, `GET /v1/reports/<n>` (row, files, summary),
+`GET /v1/reports/<n>/files/<name>`, `GET /v1/reports/<n>.zip`.
+
+Setting it up:
+```
+wrangler d1 execute vi-hardware --remote --command "CREATE TABLE IF NOT EXISTS team_log (n INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, login TEXT NOT NULL, path TEXT NOT NULL)"
+wrangler deploy -c wrangler.team.toml
+```
+Tests: `node --test server/hardware-worker/test/team.test.mjs`.
+
+A collaborator, with the GitHub CLI logged in:
+```
+curl -H "Authorization: Bearer $(gh auth token)" https://vi-team.<account>.workers.dev/v1/reports?kind=game&limit=20
+```

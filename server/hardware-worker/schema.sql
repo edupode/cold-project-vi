@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS saves (
   state TEXT NOT NULL DEFAULT 'pending',   -- pending, approved or hidden: only approved ones are public
   downloads INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS team_log (
+  n INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL,             -- when (UTC)
+  login TEXT NOT NULL,          -- the collaborator's GitHub login (team Worker, src/team.js)
+  path TEXT NOT NULL            -- what they read
+);
 CREATE TABLE IF NOT EXISTS rate (
   who TEXT PRIMARY KEY,         -- salted hash of IP and hour; rows go after the hour
   hour INTEGER NOT NULL,

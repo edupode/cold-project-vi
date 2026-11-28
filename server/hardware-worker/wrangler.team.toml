@@ -1,0 +1,19 @@
+# The team's read-only API to the bug reports (src/team.js): wrangler deploy -c wrangler.team.toml
+name = "vi-team"
+main = "src/team.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vi-hardware"
+database_id = "f5666469-a523-4611-a529-36d95f9ca3cc"
+
+[vars]
+# Collaborators of this repository (write access or more) may read.
+TEAM_REPO = "felicienradio/cold-project-vi"
+# GitHub logins let in besides them, comma separated.
+TEAM_EXTRA = "edupode"
+# Reports received from this moment on (UTC) are served; empty: nothing is. Set it to the publishing time
+# of the launcher release that tells players the project's team reads their reports, not earlier.
+TEAM_FROM = ""

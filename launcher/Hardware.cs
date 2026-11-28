@@ -413,15 +413,18 @@ namespace VIctoryLauncher
             return true;
         }
 
-        // The DLSS mode whose scene size is nearest the preset's scale. The game's own FidelityFX (FSR 3 without
-        // an RTX) takes only 720p or 1080p into 1080p: quality or dlaa there.
+        // The DLSS mode whose scene size is nearest the preset's scale, never DLAA. With DLAA the game's own
+        // FidelityFX context is asked for the output's size as its scene size, which its tables refuse: the
+        // game stops at +0x2219650 in the first seconds. In 0.3.25's reports every one of 51 such stops (12
+        // players, Sharp, Classic cgbj and Custom presets) had VICTORY_DLSS_MODE=dlaa, and 4 % of the sessions
+        // that ran on did. A full-scale preset gets quality instead.
         static string DlssModeFor(string scale, bool dlss)
         {
             double s = 1.0;
             if (scale != null) double.TryParse(scale, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out s);
             if (s <= 0) s = 1.0;
-            if (!dlss) return s >= 0.95 ? "dlaa" : "quality";
-            return s >= 0.95 ? "dlaa" : s >= 0.62 ? "quality" : s >= 0.55 ? "balanced" : s >= 0.45 ? "performance" : "ultraperformance";
+            if (!dlss) return "quality";
+            return s >= 0.62 ? "quality" : s >= 0.55 ? "balanced" : s >= 0.45 ? "performance" : "ultraperformance";
         }
 
         // What `victory play` sets for DLSS Frame Generation or FSR 3 (play.rs, settings), for the launcher's
