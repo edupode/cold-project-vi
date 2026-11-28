@@ -111,6 +111,13 @@ The engine every card plays with by default. Measured on the author's RTX 5070 T
 | Cutscenes / menus | ~26 / 30-33 FPS | **35-38 / 60 FPS** |
 | Long sessions | | **missions without crashes** |
 
+## What comes next
+
+The plan, in Portuguese: [docs/PLANO.md](docs/PLANO.md). A world frame here takes 104-120 ms, 68-77 of them preparing
+on the processor and 0 waiting for the card, so the next releases go after that: changes measured in other forks and
+upstream pull requests, one at a time, each off by default until the players' reports confirm it
+(`scripts/report-stats.py`).
+
 ## Progress on PortWatch VI's scale
 
 **About 79 %** (27/11/2026: the author's RTX 5070 Ti laptop, and players reporting a steady 30 fps). PortWatch's scale: up to 50 %,

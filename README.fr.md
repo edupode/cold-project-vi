@@ -88,6 +88,13 @@ Le moteur avec lequel toutes les cartes jouent par défaut. Mesuré sur le porta
 | Cinématiques / menus | ~26 / 30-33 FPS | **35-38 / 60 FPS** |
 | Longues sessions | | **missions sans plantage** |
 
+## La suite
+
+Le plan, en portugais : [docs/PLANO.md](docs/PLANO.md). Une image du monde prend ici 104-120 ms, dont 68-77 à
+préparer sur le processeur et 0 à attendre la carte : les prochaines versions s'attaquent à cela, avec des changements
+mesurés dans d'autres forks et des pull requests du VIctory d'origine, un à la fois, chacun désactivé jusqu'à ce que
+les rapports des joueurs le confirment (`scripts/report-stats.py`).
+
 ## Progression sur l'échelle de PortWatch VI
 
 **Environ 79 %** (27/11/2026 : le portable de l'auteur, RTX 5070 Ti, et des joueurs à 30 fps stables). L'échelle de PortWatch :

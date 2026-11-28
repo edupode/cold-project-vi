@@ -86,6 +86,13 @@ O motor com que todas as placas jogam por defeito. Medido no portátil do autor 
 | Cutscenes / menus | ~26 / 30-33 FPS | **35-38 / 60 FPS** |
 | Sessões longas | | **missões sem crashes** |
 
+## O que vem a seguir
+
+O plano: [docs/PLANO.md](docs/PLANO.md). Um frame no mundo demora aqui 104-120 ms, dos quais 68-77 a preparar no
+processador e 0 à espera da placa, por isso as próximas releases vão atrás disso: mudanças medidas noutros forks e em
+pull requests do VIctory original, uma de cada vez, cada uma desligada até os relatórios dos jogadores a confirmarem
+(`scripts/report-stats.py`).
+
 ## Progresso na escala do PortWatch VI
 
 **Cerca de 79 %** (27/11/2026: o portátil do autor, RTX 5070 Ti, e jogadores com 30 fps estáveis). A escala do PortWatch: até 50 %,
