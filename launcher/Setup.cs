@@ -1091,6 +1091,44 @@ namespace VIctoryLauncher
             catch (Exception) { return DumpFiles; }
         }
 
+        // Every archive of the complete dump (1.0.2.1) by its name, and how many files its data folder holds. In
+        // 0.3.25's reports 71 players had exactly this and played; the four whose folder differed (12 archives and
+        // no data or pack folder, 21 archives, a data folder of 32 files) ended every one of their 31 games within
+        // seconds, in the title's component start. Only names: none of the game's bytes are here.
+        static readonly string[] DumpArchives = {
+            "anim.rpf", "appdata0.rpf", "audio.rpf", "common.rpf", "data.rpf", "levels.rpf", "movies.rpf", "navmeshes.rpf",
+            "packs.rpf", "script.rpf", "shaders.rpf", "textures.rpf",
+            @"pack\core_bvh4\core_bvh4.rpf", @"pack\core_licenses\core_licenses_data.rpf", @"pack\core_restofworld\core_restofworld.rpf",
+            @"pack\core_restofworld001\core_restofworld001.rpf", @"pack\shared_minigame000\shared_minigame000.rpf",
+            @"pack\shared_minigame000_bvh4\shared_minigame000_bvh4.rpf", @"pack\story000\story000.rpf", @"pack\story000\story000_script.rpf",
+            @"pack\story000_bvh4\story000_bvh4.rpf", @"pack\story000_restofworld\story000_restofworld.rpf",
+        };
+        const int DumpDataFiles = 46;
+
+        // What the complete dump has that this folder lacks (archives by name, a short data folder), or null.
+        static string IncompleteDump(string dir)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return null;
+                var absent = DumpArchives.Where(f => !File.Exists(Path.Combine(dir, f))).ToList();
+                var data = Path.Combine(dir, "data");
+                int dataFiles = Directory.Exists(data) ? Directory.EnumerateFiles(data, "*", SearchOption.AllDirectories).Take(DumpDataFiles).Count() : 0;
+                if (absent.Count == 0 && dataFiles >= DumpDataFiles) return null;
+                var parts = new List<string>();
+                if (absent.Count > 0)
+                    parts.Add(string.Format(L("{0} of the game's {1} archives are missing: {2}", "faltam {0} dos {1} arquivos do jogo: {2}", "il manque {0} des {1} archives du jeu : {2}"),
+                        absent.Count, DumpArchives.Length, string.Join(", ", absent.Take(6).ToArray()) + (absent.Count > 6 ? ", ..." : "")));
+                if (dataFiles < DumpDataFiles)
+                    parts.Add(string.Format(L("its data folder holds {0} of {1} files", "a pasta data tem {0} de {1} ficheiros", "son dossier data a {0} fichiers sur {1}"), dataFiles, DumpDataFiles));
+                return string.Format(L("This copy of the game is incomplete ({0}). Every game with a folder like this has closed within seconds: extract or download the whole game again.",
+                    "Esta copia do jogo esta incompleta ({0}). Todos os jogos com uma pasta assim fecharam em segundos: volta a extrair ou descarregar o jogo inteiro.",
+                    "Cette copie du jeu est incomplète ({0}). Chaque partie avec un dossier comme celui-ci s'est fermée en quelques secondes : extrais ou télécharge de nouveau tout le jeu."),
+                    string.Join("; ", parts.ToArray()));
+            }
+            catch (Exception) { return null; }
+        }
+
         static string MissingDumpText(string dir)
         {
             return string.Format(L("The game's files are not beside the executable in {0} ({1} missing). Move the whole dump (game_scarlett_master.exe with its .rpf files and its data and pack folders) into a folder of its own, for example C:\\Games\\GTA6, and choose that folder on the Play page.",

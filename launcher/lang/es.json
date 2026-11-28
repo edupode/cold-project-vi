@@ -265,7 +265,6 @@
  "Game logs: one is sent to edupode when each game closes. Thank you!": "Logs de partidas: se envía uno a edupode al cerrar cada partida. ¡Gracias!",
  "Game logs are not sent.": "Los logs de partidas no se envían.",
  "Send a log of each game to edupode": "Enviar un log de cada partida a edupode",
- "When the game closes: a summary and the end of its log, your user name taken out.": "Al cerrar el juego: un resumen y el final de su log, sin tu nombre de usuario.",
  "Game log sent to edupode.": "Log de la partida enviado a edupode.",
  "Each step checks your PC. Press its button, or 'Do everything for me' to run the missing ones in order. Windows asks before anything that needs administrator rights.": "Cada paso comprueba tu PC. Pulsa su botón, o 'Hacerlo todo por mí' para ejecutar en orden los que faltan. Windows pregunta antes de todo lo que necesite permisos de administrador.",
  "Do everything for me": "Hacerlo todo por mí",
@@ -754,5 +753,10 @@
  "Starting the game...": "Iniciando el juego...",
  "What's new in v{0}": "Novedades en v{0}",
  "Got it": "Entendido",
- "All releases": "Todas las releases"
+ "All releases": "Todas las releases",
+ "When the game closes: a summary and the end of its log, your user name taken out. Read by edupode and the project's team.": "Al cerrar el juego: un resumen y el final de su log, sin tu nombre de usuario. Lo leen edupode y el equipo del proyecto.",
+ "{0} of the game's {1} archives are missing: {2}": "faltan {0} de los {1} archivos del juego: {2}",
+ "its data folder holds {0} of {1} files": "su carpeta data tiene {0} de {1} archivos",
+ "This copy of the game is incomplete ({0}). Every game with a folder like this has closed within seconds: extract or download the whole game again.": "Esta copia del juego está incompleta ({0}). Todas las partidas con una carpeta así se cerraron en segundos: vuelve a extraer o descargar el juego completo.",
+ "\r\n\r\nPlay anyway?": "\r\n\r\n¿Jugar de todos modos?"
 }

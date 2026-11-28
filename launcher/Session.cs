@@ -231,6 +231,8 @@ namespace VIctoryLauncher
         // ---------------------------------------------------------------- what is ready
         // Checked on a worker thread every few seconds; the window shows the result (Refresh2).
         volatile string exeProblem;
+        // An incomplete copy of the game (Setup.cs, IncompleteDump): PLAY asks, it does not refuse.
+        volatile string dumpWarning;
         volatile int shaderFiles;
         volatile bool pagefileOk = true, powerOk = true, gpuPrefOk = true, shadersOk = true;
         bool warnedThisSession;
@@ -252,6 +254,7 @@ namespace VIctoryLauncher
             string game = null;
             Invoke(new Action(() => game = GameExe));
             exeProblem = ExeProblem(game);
+            dumpWarning = exeProblem == null && game != null && File.Exists(game) ? IncompleteDump(Path.GetDirectoryName(game)) : null;
             // Folder by folder (Setup.cs, CountUpTo): one entry renamed mid-walk no longer makes it 0.
             shaderFiles = CountUpTo(Path.Combine(ActiveCacheDir, "shaders"), int.MaxValue);
             shadersOk = ShadersReady();

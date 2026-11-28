@@ -1624,9 +1624,10 @@ namespace VIctoryLauncher
             int count = exeBox != null && exeBox.Visible ? exeBox.Items.Count : 0;
             gameStatus.Text = !game ? L("Choose the folder of your dump.", "Escolhe a pasta do teu dump.")
                 : exeProblem != null ? "✗  " + exeProblem
+                : dumpWarning != null ? "⚠  " + dumpWarning
                 : count > 1 ? string.Format(L("✓  Game found: {0} executables, choose one on the right.", "✓  Jogo encontrado: {0} executaveis, escolhe um a direita."), count)
                 : L("✓  Game found", "✓  Jogo encontrado", "✓  Jeu trouvé") + "  ·  " + Path.GetFileName(GameExe);
-            gameStatus.ForeColor = !game ? Theme.Dim : exeProblem != null ? Theme.Warn : Theme.Good;
+            gameStatus.ForeColor = !game ? Theme.Dim : exeProblem != null || dumpWarning != null ? Theme.Warn : Theme.Good;
             gameHeading.Note = game ? Path.GetFileName(GameExe) : "";
             gameHeading.Invalidate();
             var exe = VictoryExe;
@@ -2316,6 +2317,11 @@ namespace VIctoryLauncher
                 MessageBox.Show(this, exeProblem, "Julia's Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
+            // An incomplete copy of the game: asked every time, the player may still try.
+            var incomplete = dumpWarning;
+            if (incomplete != null && MessageBox.Show(this, incomplete + L("\r\n\r\nPlay anyway?", "\r\n\r\nJogar mesmo assim?", "\r\n\r\nJouer quand même ?"),
+                    "Julia's Launcher", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
             // What is missing (virtual memory, power, Resizable BAR...): asked once per launcher session.
             var missing = Missing();
             if (missing.Count > 0 && !warnedThisSession)

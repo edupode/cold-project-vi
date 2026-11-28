@@ -126,7 +126,7 @@ namespace VIctoryLauncher
             sb.AppendLine("CPU: " + h.Cpu + "   RAM: " + h.RamGb + " GB   Board: " + h.BoardMaker + " " + h.Board);
             sb.AppendLine("Windows: " + h.Os + "   Disk: " + h.Disk + (h.Laptop ? "   laptop" : ""));
             sb.AppendLine("Missing: " + (missing.Count == 0 ? "nothing" : string.Join(", ", missing.ToArray())));
-            sb.AppendLine("Shaders cached: " + shaderFiles + (exeProblem != null ? "   Game file: " + exeProblem : ""));
+            sb.AppendLine("Shaders cached: " + shaderFiles + (exeProblem != null ? "   Game file: " + exeProblem : "") + (dumpWarning != null ? "   Incomplete game: " + dumpWarning : ""));
             sb.AppendLine(ExeLine());
             if (ticked.Count > 0) sb.AppendLine("Ticked: " + string.Join("; ", ticked.ToArray()));
             if (said.Length > 0) sb.AppendLine("In their words: " + said);

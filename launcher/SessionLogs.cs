@@ -1,8 +1,11 @@
 // Julia's Launcher: a standard log of each game, sent when the game closes, for players who said yes.
-// Asked once, apart from hardware sharing (which never sends logs): launcher.ini's share_logs=1 or 0.
+// Asked once, apart from hardware sharing (which never sends logs): launcher.ini's share_logs=1 or 0, and
+// share_logs_v=2 once the answer was given to the text that says the project's team reads the logs too (a yes
+// given to the earlier text, "only edupode", is asked again and sends nothing until then).
 // The package is small and the same every time: a summary (hardware, preset, options, how long the game ran,
 // how it ended) and the last part of the session's log, the user name taken out of every path. It goes to
-// the same private report box as "Send errors" (POST /v1/report, kind "session"), read only by edupode.
+// the same private report box as "Send errors" (POST /v1/report, kind "session"), read by edupode and the
+// project's team (server/hardware-worker/src/team.js).
 using System;
 using System.Drawing;
 using System.IO;
@@ -19,12 +22,15 @@ namespace VIctoryLauncher
     {
         const int SessionTail = 256 * 1024;
 
-        bool SessionLogsOn { get { return ReadSetting("share_logs") == "1"; } }
+        const string LogsConsent = "2";
+
+        bool SessionLogsOn { get { return ReadSetting("share_logs") == "1" && ReadSetting("share_logs_v") == LogsConsent; } }
 
         // Once, before a game: what is sent and when, yes or no. Asked of everyone who has not answered yet.
         void AskSessionLogs()
         {
-            if (ReadSetting("share_logs") != null) return;
+            var answer = ReadSetting("share_logs");
+            if (answer == "0" || (answer == "1" && ReadSetting("share_logs_v") == LogsConsent)) return;
             var f = new Form { Text = L("Game logs", "Logs do jogo", "Logs du jeu"), ClientSize = new Size(660, 470), BackColor = Theme.Back, ForeColor = Theme.Text,
                 Font = Theme.Ui(9.75f), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, Icon = Icon };
             f.Controls.Add(new Heading(L("New: send a log of each game?", "Novo: enviar uma log de cada jogo?", "Nouveau : envoyer un log de chaque partie ?")) { Location = new Point(20, 16), Width = 620 });
@@ -39,7 +45,8 @@ namespace VIctoryLauncher
                 "O QUE E ENVIADO, CADA VEZ QUE O JOGO FECHA",
                 "   Um resumo (placa grafica, processador, RAM, Windows, predefinicao e opcoes, quanto tempo",
                 "   correu, como acabou) e a parte final da log do jogo (cerca de 256 KB).",
-                "   O teu nome de utilizador e tirado de todos os caminhos. So o edupode le as logs.",
+                "   O teu nome de utilizador e tirado de todos os caminhos. Leem as logs o edupode e a equipa do",
+                "   projeto (os colaboradores do felicienradio/cold-project-vi); cada leitura fica registada.",
                 "",
                 "NUNCA E ENVIADO",
                 "   Os teus ficheiros, os teus saves, o teu IP.",
@@ -55,7 +62,8 @@ namespace VIctoryLauncher
                 "CE QUI EST ENVOYÉ, À CHAQUE FERMETURE DU JEU",
                 "   Un résumé (carte graphique, processeur, RAM, Windows, préréglage et options, durée de la",
                 "   partie, comment elle a fini) et la fin du log du jeu (environ 256 Ko).",
-                "   Ton nom d'utilisateur est retiré de tous les chemins. Seul edupode lit les logs.",
+                "   Ton nom d'utilisateur est retiré de tous les chemins. Les logs sont lus par edupode et l'équipe",
+                "   du projet (les collaborateurs de felicienradio/cold-project-vi) ; chaque lecture est enregistrée.",
                 "",
                 "JAMAIS ENVOYÉ",
                 "   Tes fichiers, tes sauvegardes, ton adresse IP.",
@@ -71,7 +79,8 @@ namespace VIctoryLauncher
                 "WHAT IS SENT, EACH TIME THE GAME CLOSES",
                 "   A summary (graphics card, processor, RAM, Windows, preset and options, how long the game ran,",
                 "   how it ended) and the last part of the game's log (about 256 KB).",
-                "   Your user name is taken out of every path. Only edupode reads the logs.",
+                "   Your user name is taken out of every path. edupode and the project's team (the collaborators",
+                "   of felicienradio/cold-project-vi) read the logs; every read is recorded.",
                 "",
                 "NEVER SENT",
                 "   Your files, your saves, your IP address.",
@@ -90,6 +99,7 @@ namespace VIctoryLauncher
         void SetSessionLogs(bool on)
         {
             WriteSetting("share_logs", on ? "1" : "0");
+            WriteSetting("share_logs_v", LogsConsent);
             if (logsBox != null && logsBox.Checked != on) logsBox.Checked = on;
             Log(on ? L("Game logs: one is sent to edupode when each game closes. Thank you!", "Logs do jogo: uma e enviada ao edupode quando cada jogo fecha. Obrigado!", "Logs du jeu : un est envoyé à edupode à la fin de chaque partie. Merci !")
                    : L("Game logs are not sent.", "As logs do jogo nao sao enviadas.", "Les logs du jeu ne sont pas envoyés."));
@@ -101,7 +111,7 @@ namespace VIctoryLauncher
         int SessionLogsSection(Panel page, int X, int y, int W)
         {
             logsBox = new OptionCard { Text = L("Send a log of each game to edupode", "Enviar uma log de cada jogo ao edupode", "Envoyer un log de chaque partie à edupode"),
-                Line = L("When the game closes: a summary and the end of its log, your user name taken out.", "Quando o jogo fecha: um resumo e o fim da log, sem o teu nome de utilizador.", "À la fermeture du jeu : un résumé et la fin du log, sans ton nom d'utilisateur."),
+                Line = L("When the game closes: a summary and the end of its log, your user name taken out. Read by edupode and the project's team.", "Quando o jogo fecha: um resumo e o fim da log, sem o teu nome de utilizador. Lida pelo edupode e pela equipa do projeto.", "À la fermeture du jeu : un résumé et la fin du log, sans ton nom d'utilisateur. Lu par edupode et l'équipe du projet."),
                 Location = new Point(X, y), Size = new Size(W, 58), Checked = SessionLogsOn };
             logsBox.CheckedChanged += (s, e) => { if (logsBox.Checked != SessionLogsOn) SetSessionLogs(logsBox.Checked); };
             page.Controls.Add(logsBox);
@@ -188,6 +198,7 @@ namespace VIctoryLauncher
             sb.AppendLine("Shaders cached: " + shaderFiles);
             sb.AppendLine(ExeLine());
             sb.AppendLine(GameFolderListing(folder, false));
+            if (dumpWarning != null) sb.AppendLine("Incomplete game: " + dumpWarning);
             sb.AppendLine(string.Format("Played: {0:0.0} min   Ended: {1}", (ended - started).TotalMinutes, code == 0 ? "normally (code 0)" : "with an error (code " + code + ")"));
             return Scrub(sb.ToString()) + "\r\nOptions:\r\n" + Scrub(options);
         }

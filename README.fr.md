@@ -215,7 +215,7 @@ Le launcher est en anglais par défaut, avec le **portugais** et le **français*
   3. Le launcher met les bons fichiers dans un zip sur votre Bureau, sans votre nom d'utilisateur dans les chemins. Il
      ouvre le dossier et copie un court résumé.
   4. Envoyez-le :
-     - **Send to edupode :** un clic. Une copie compacte (résumé, réglages, la fin de chaque log, sans votre nom d'utilisateur) part vers une boîte privée sur Cloudflare que seul edupode peut lire ; vous recevez le numéro du rapport.
+     - **Send to edupode :** un clic. Une copie compacte (résumé, réglages, la fin de chaque log, sans votre nom d'utilisateur) part vers une boîte privée sur Cloudflare que seuls edupode et l'équipe du projet (les collaborateurs de felicienradio/cold-project-vi) peuvent lire, chaque lecture étant enregistrée ; vous recevez le numéro du rapport.
      - **Ouvrir une issue GitHub :** une nouvelle [issue](https://github.com/edupode/cold-project-vi/issues) s'ouvre dans
        votre navigateur, déjà remplie (matériel, ce que vous avez coché, vos mots). Glissez-y le zip et appuyez sur
        **Submit new issue** (un compte GitHub gratuit est nécessaire).

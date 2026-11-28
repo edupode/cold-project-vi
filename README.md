@@ -232,7 +232,7 @@ English by default, **Português** and **Français** in the side bar; this page 
   2. Tick what happened (shaders not rendering, virtual memory not turning on, ...) and write a line.
   3. The launcher puts the right files in a zip on your Desktop, with your user name taken out of every path. It opens the folder and copies a short summary.
   4. Send it:
-     - **Send to edupode:** one click. A compact copy (summary, settings, the end of each log, your user name taken out) goes to a private report box on Cloudflare that only edupode can read; you get the report's number.
+     - **Send to edupode:** one click. A compact copy (summary, settings, the end of each log, your user name taken out) goes to a private report box on Cloudflare that edupode and the project's team (the collaborators of felicienradio/cold-project-vi) can read, each read recorded; you get the report's number.
      - **Open a GitHub issue:** a new [issue](https://github.com/edupode/cold-project-vi/issues) opens in your browser already filled in (hardware, what you ticked, your words). Drag the zip into it and press **Submit new issue** (a free GitHub account is needed).
      - **Discord:** send the zip in the **"Send bugs here please"** channel on [Discord](https://discord.gg/648WEXCAsZ).
 
