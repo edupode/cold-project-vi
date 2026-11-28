@@ -2258,6 +2258,23 @@ fn scratch_pool() -> bool {
     *ON.get_or_init(|| std::env::var_os("VICTORY_SCRATCH_POOL").is_none_or(|v| v != "0"))
 }
 
+/// Whether a list's upload buffers (`HostList::upload`: title buffer copies, texture uploads
+/// and clears; and its scratch past [`SCRATCH_CHUNK`]) come from the scratch chunks lists give
+/// back ([`SPARE`]) instead of one made, zeroed by the system and freed per copy: a session of
+/// 12 minutes made 523,844 upload buffers (310 GB, some 700 a second) on 28/11/2026, with
+/// `CreateCommittedResource` each time. `VICTORY_UPLOAD_POOL=0`: one made per copy, as before.
+fn upload_pool() -> bool {
+    static ON: OnceLock<bool> = OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("VICTORY_UPLOAD_POOL").is_none_or(|v| v != "0"))
+}
+
+/// The smallest pooled upload buffer (the size of a placed resource's alignment).
+const UPLOAD_POOL_LEAST: u64 = 64 << 10;
+/// The largest one pooled: bigger ones are rare and would crowd the spare chunks out.
+const UPLOAD_POOL_MOST: u64 = 16 << 20;
+/// Pooled upload buffers since the start: taken from the spare chunks, made new.
+pub(crate) static UPLOAD_POOL_STATS: [std::sync::atomic::AtomicU64; 2] = [const { std::sync::atomic::AtomicU64::new(0) }; 2];
+
 /// Things of some sizes that nothing holds now, kept for whoever next asks
 /// for one of the same size.
 struct Spare<T> {
@@ -7590,6 +7607,44 @@ impl HostList {
         self.used_pipeline(name);
     }
 
+    /// With [`upload_pool`]: an upload buffer of `size` bytes or more from the scratch chunks
+    /// lists give back once their submissions ran ([`SPARE`]), in sizes of powers of two, zeroed
+    /// as a new one is (textures leave parts of theirs unwritten: the rainbow textures of 0.3.7);
+    /// held by the list as its other chunks are, and given back when it is reset. `None`: off,
+    /// or larger than [`UPLOAD_POOL_MOST`].
+    fn pooled_upload(&self, host: &Host, size: u64) -> Option<(ID3D12Resource, *mut u8)> {
+        if !upload_pool() || size > UPLOAD_POOL_MOST {
+            return None;
+        }
+        let class = size.max(UPLOAD_POOL_LEAST).next_power_of_two();
+        let spare = if scratch_pool() { SPARE.lock().unwrap_or_else(|e| e.into_inner()).take(class) } else { None };
+        let chunk = match spare {
+            Some(chunk) => {
+                // As `take_chunk` counts one taken from the spare ones.
+                ALIVE[3].fetch_sub(1, Ordering::Relaxed);
+                ALIVE[4].fetch_sub(class, Ordering::Relaxed);
+                ALIVE[5].fetch_add(1, Ordering::Relaxed);
+                // SAFETY: the chunk's persistent mapping, `class` >= `size` bytes, no list holds it.
+                unsafe { std::ptr::write_bytes(chunk.data as *mut u8, 0, size as usize) };
+                UPLOAD_POOL_STATS[0].fetch_add(1, Ordering::Relaxed);
+                chunk
+            }
+            None => {
+                // A new one: zeroed by the system.
+                let (buffer, data) = host.upload_buffer(class)?;
+                name(&buffer, || format!("list upload {class:#x} (pooled)"));
+                ALIVE[1].fetch_add(1, Ordering::Relaxed);
+                ALIVE[2].fetch_add(class, Ordering::Relaxed);
+                UPLOAD_POOL_STATS[1].fetch_add(1, Ordering::Relaxed);
+                Chunk { buffer, data: data as usize }
+            }
+        };
+        let data = chunk.data as *mut u8;
+        let buffer = chunk.buffer.clone();
+        self.deferred().plane_uploads.push((chunk, class));
+        Some((buffer, data))
+    }
+
     fn deferred(&self) -> std::sync::MutexGuard<'_, Deferred> {
         self.deferred.lock().unwrap_or_else(|e| e.into_inner())
     }
@@ -7705,10 +7760,13 @@ impl HostList {
     }
 
     /// A mapped upload buffer of `size` bytes, alive until the list is
-    /// reset.
-    ///
-    /// shortcut: one buffer per copy; pool them once uploads are frequent.
+    /// reset: one given back by a list before ([`pooled_upload`]), else a new one.
     pub(crate) fn upload(&self, host: &Host, size: u64) -> Option<(ID3D12Resource, *mut u8)> {
+        if card_steps::stage() <= 1
+            && let Some(made) = self.pooled_upload(host, size)
+        {
+            return Some(made);
+        }
         // With [`card_steps`] the card may be the one that fills it.
         let (buffer, data) = if card_steps::stage() > 1 { host.shared_buffer(size)? } else { host.upload_buffer(size)? };
         name(&buffer, || format!("list upload {size:#x}"));
@@ -7740,6 +7798,9 @@ impl HostList {
         let mut s = self.scratch.lock().unwrap_or_else(|e| e.into_inner());
         let len = len.max(1).next_multiple_of(256);
         if len > SCRATCH_CHUNK {
+            if let Some((buffer, data)) = self.pooled_upload(host, len) {
+                return Some((buffer, 0, data));
+            }
             let (buffer, data) = host.upload_buffer(len)?;
             name(&buffer, || format!("list scratch {len:#x}"));
             self.deferred().hold_upload(buffer.clone(), len);

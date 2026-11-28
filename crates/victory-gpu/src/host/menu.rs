@@ -758,6 +758,7 @@ impl Menu {
     }
 
     /// The box's lines as text (what the tests read).
+    #[cfg(test)]
     fn lines(&self) -> Vec<String> {
         self.rows().into_iter().map(|l| l.text).collect()
     }
