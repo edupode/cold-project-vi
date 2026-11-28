@@ -22,7 +22,7 @@ namespace VIctoryLauncher
     {
         // This launcher's version; a release with a higher one is an update.
         // felicienradio's 0.3.1 with edupode's fixes: above 0.3.1, on edupode's release channel and key.
-        public const string Version = "0.3.24";
+        public const string Version = "0.3.25";
         public const string ManifestUrl = "https://github.com/felicienradio/cold-project-vi/releases/latest/download/manifest.json";
         public const string SignatureUrl = "https://github.com/felicienradio/cold-project-vi/releases/latest/download/manifest.sig";
         public const string DownloadPrefix = "https://github.com/felicienradio/cold-project-vi/releases/download/";
@@ -363,6 +363,51 @@ namespace VIctoryLauncher
                 catch (Exception) { }
             }
             return false;
+        }
+
+        // The emulator matches this launcher's version: when the launcher is not run from a source folder and its
+        // own update left a checked victory.exe under updates\<this version>, a different victory.exe where updates
+        // install it is replaced by that one (copied beside, swapped, put back if anything fails). An RX 6500 XT
+        // had launcher 0.3.24 with 0.3.21's victory.exe (28/11/2026), so no engine fix since reached it.
+        void RepairEngine()
+        {
+            new Thread(() => {
+                try
+                {
+                    Thread.Sleep(5000);
+                    if (UseAmdEngine) return;
+                    var src = SourceDir;
+                    if (src != null && (root + "\\").StartsWith(src.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) return;
+                    var good = Path.Combine(Path.GetDirectoryName(dataRoot), "updates", Updater.Version, "victory.exe");
+                    var target = Path.Combine(AppDir, "victory.exe");
+                    if (!File.Exists(good)) return;
+                    if (File.Exists(target) && new FileInfo(target).Length == new FileInfo(good).Length && Sha256(target) == Sha256(good)) return;
+                    if (VictoryRunning() || busyNow || setupBusy) return; // the next opening tries again
+                    Directory.CreateDirectory(Path.GetDirectoryName(target));
+                    var fresh = target + ".new";
+                    var old = target + ".bak";
+                    if (File.Exists(fresh)) File.Delete(fresh);
+                    File.Copy(good, fresh, true);
+                    if (new FileInfo(fresh).Length != new FileInfo(good).Length) { File.Delete(fresh); return; }
+                    bool had = File.Exists(target);
+                    if (had) { if (File.Exists(old)) File.Delete(old); File.Move(target, old); }
+                    try { File.Move(fresh, target); }
+                    catch (Exception)
+                    {
+                        if (had && !File.Exists(target)) File.Move(old, target);
+                        throw;
+                    }
+                    if (had) try { File.Delete(old); } catch (Exception) { }
+                    Log(string.Format(L("The emulator did not match this launcher (v{0}): the one its update brought is in place now.",
+                        "O emulador nao correspondia a este launcher (v{0}): o que a atualizacao trouxe esta agora no lugar.",
+                        "L'émulateur ne correspondait pas à ce lanceur (v{0}) : celui de sa mise à jour est maintenant en place."), Updater.Version));
+                    Post(Refresh2);
+                }
+                catch (Exception e)
+                {
+                    try { File.AppendAllText(Program.ErrorFile, DateTime.Now + "  repair engine: " + e + Environment.NewLine); } catch (Exception) { }
+                }
+            }) { IsBackground = true }.Start();
         }
 
         static string Sha256(string file)

@@ -296,6 +296,7 @@ namespace VIctoryLauncher
             later.Start();
             StartUpdates();
             StartHardwareShare();
+            RepairEngine();
         }
 
         protected override void OnHandleCreated(EventArgs e)

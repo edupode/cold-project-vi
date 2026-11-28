@@ -19,6 +19,10 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.25",
+            "  •  The emulator always matches the launcher's version (engine fixes reach every PC).",
+            "  •  Reports list the game's folder (names and sizes) to spot an incomplete package.",
+            "",
             "IN 0.3.24",
             "  •  Always plays the updated engine (some PCs started an older victory.exe found elsewhere).",
             "  •  Three of the game's own 'stop' checks are stepped over (RTX 4060, RX 6500 XT, RTX 3050 laptop).",
@@ -131,6 +135,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.25",
+            "  •  O emulador corresponde sempre a versao do launcher (as correcoes do motor chegam a todos).",
+            "  •  Os relatorios listam a pasta do jogo (nomes e tamanhos) para ver um pacote incompleto.",
+            "",
             "NA 0.3.24",
             "  •  Usa sempre o motor atualizado (alguns PCs arrancavam um victory.exe mais antigo de outro sitio).",
             "  •  Tres verificacoes de 'paragem' do jogo sao saltadas (RTX 4060, RX 6500 XT, portatil RTX 3050).",
@@ -243,6 +251,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.25",
+            "  •  L'émulateur correspond toujours à la version du lanceur (les correctifs arrivent partout).",
+            "  •  Les rapports listent le dossier du jeu (noms et tailles) pour repérer un paquet incomplet.",
+            "",
             "DANS LA 0.3.24",
             "  •  Utilise toujours le moteur mis à jour (certains PC lançaient un victory.exe plus ancien).",
             "  •  Trois vérifications « d'arrêt » du jeu sont passées (RTX 4060, RX 6500 XT, portable RTX 3050).",

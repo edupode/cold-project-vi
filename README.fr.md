@@ -61,6 +61,8 @@ du jeu n'est inclus.**
   est traité comme continuer sans lui : le jeu ne se ferme plus au bout d'une seconde sur certains PC ; les autres n'y arrivent jamais.
 - **0.3.24 :** un lanceur hors d'un dossier source utilise toujours le victory.exe des mises à jour ; les arrêts du jeu
   après un composant qui n'a pas démarré sont passés en trois endroits ; journaux et rapports nomment le victory.exe lancé.
+- **0.3.25 :** le lanceur remet le victory.exe apporté par sa propre mise à jour quand un autre est en place ; les
+  rapports listent le dossier du jeu (noms et tailles) et le résumé de chaque partie a une ligne à son sujet.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

@@ -1,7 +1,7 @@
-## Julia's Launcher {tag} is out 🩹
+## Julia's Launcher {tag} is out 🔧
 **Fixes**
-🧩 The game still closed a second after opening? Some PCs were starting an **older victory.exe** found elsewhere, so engine fixes never reached them. The launcher now always plays the updated one.
-🚪 Three of the game's own "stop" checks are now stepped over (RTX 4060, RX 6500 XT, RTX 3050 laptop and others). Other PCs run exactly as before.
+🔧 The launcher now makes sure the **emulator matches its version** when it opens, so engine fixes really reach every PC.
+📋 Error reports include a list of the game's folder (names and sizes only), to spot an incomplete game package quickly. Still crashing a second after opening? Press **Send errors** so we can compare.
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.
