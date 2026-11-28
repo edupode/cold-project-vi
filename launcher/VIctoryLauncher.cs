@@ -109,8 +109,9 @@ namespace VIctoryLauncher
     partial class LauncherForm : Form
     {
         static bool Pt, Fr;
-        // French comes from French.cs (looked up by the English text), or from fr when a call passes it.
-        static string L(string en, string pt, string fr = null) { return Fr ? (fr ?? Fr_(en)) : Pt ? pt : en; }
+        // French comes from French.cs (looked up by the English text), or from fr when a call passes it; the other
+        // languages from their file (Languages.cs), looked up by the English text too.
+        static string L(string en, string pt, string fr = null) { return Fr ? (fr ?? Fr_(en)) : Pt ? pt : LangText != null ? FromFile(en) : en; }
 
         // Opens the launcher again (a new language). Application.Restart started the new one while this one
         // still held the one-launcher lock, so the new one saw "already running" and quit: nothing reopened.
@@ -188,8 +189,7 @@ namespace VIctoryLauncher
             FormClosed += (s, e) => { closing = true; };
             Activated += (s, e) => { if (closePrompt && !closing) { try { BeginInvoke(new Action(() => { if (!closing) closePrompt = false; })); } catch (Exception) { } } };
             Anim.Attach(this, ReadSetting("animations") != "0");
-            Pt = ReadSetting("lang") == "pt";
-            Fr = ReadSetting("lang") == "fr";
+            SetLanguage(ReadSetting("lang"));
             cacheDir = ReadSetting("cache");
             if (cacheDir == null || (!cacheDir.All(c => c < 128) && cacheDir == Path.Combine(dataRoot, "cache"))) cacheDir = DefaultCacheDir();
             dataDir = ReadSetting("data") ?? Path.Combine(dataRoot, "data");
@@ -389,13 +389,22 @@ namespace VIctoryLauncher
             var report = new Pill { Text = L("Send errors (GitHub / Discord)", "Enviar erros (GitHub / Discord)"), Size = new Size(184, 34), Location = new Point(16, 0), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
             report.Click += (s, e) => ReportErrors();
             side.Controls.Add(report);
-            var en = new Pill { Link = true, Text = "EN", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = !Pt && !Fr };
-            var pt = new Pill { Link = true, Text = "PT", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = Pt };
-            var fr = new Pill { Link = true, Text = "FR", Size = new Size(58, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = Fr };
-            en.Click += (s, e) => { if (Pt || Fr) { Pt = false; Fr = false; SaveSettings(); RestartLauncher(); } };
-            pt.Click += (s, e) => { if (!Pt) { Pt = true; Fr = false; SaveSettings(); RestartLauncher(); } };
-            fr.Click += (s, e) => { if (!Fr) { Fr = true; Pt = false; SaveSettings(); RestartLauncher(); } };
-            side.Controls.Add(en); side.Controls.Add(pt); side.Controls.Add(fr);
+            // The language: a button with the current one's name that opens the list of every language there is
+            // (English, Portuguese, French and each translation file, Languages.cs); a choice is saved and the
+            // launcher opens again in it.
+            var languages = Languages();
+            var current = languages.FirstOrDefault(l => l.Key == Lang);
+            var langButton = new Pill { Link = true, Text = (current.Value ?? "English") + "  ▾", Size = new Size(184, 30), BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left, Main = true };
+            var langMenu = new ContextMenuStrip { ShowImageMargin = false, ShowCheckMargin = true };
+            foreach (var l in languages)
+            {
+                var code = l.Key;
+                var item = new ToolStripMenuItem(l.Value) { Checked = code == Lang };
+                item.Click += (s, e) => { if (code == Lang) return; SetLanguage(code); SaveSettings(); RestartLauncher(); };
+                langMenu.Items.Add(item);
+            }
+            langButton.Click += (s, e) => langMenu.Show(langButton, new Point(0, -langMenu.PreferredSize.Height));
+            side.Controls.Add(langButton);
             var tech = new Label { Text = "D3D12 · SM 6.6", Font = Theme.Mono(8f), ForeColor = Theme.Dim, AutoSize = true, BackColor = Theme.Side, Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
             side.Controls.Add(tech);
             // The theme picker: one circle per theme; a click saves it (launcher.ini theme=) and opens the launcher again in it.
@@ -421,7 +430,7 @@ namespace VIctoryLauncher
             };
             side.Resize += (s, e) => {
                 report.Top = side.Height - 200;
-                en.Location = new Point(16, side.Height - 80); pt.Location = new Point(79, side.Height - 80); fr.Location = new Point(142, side.Height - 80);
+                langButton.Location = new Point(16, side.Height - 80);
                 tech.Location = new Point((side.Width - tech.Width) / 2, side.Height - 36);
             };
             return side;
@@ -2553,7 +2562,7 @@ namespace VIctoryLauncher
                 Directory.CreateDirectory(Path.GetDirectoryName(settingsFile));
                 Func<CheckBox, string> b = c => c.Checked ? "1" : "0";
                 var mine = new[] {
-                    "lang=" + (Pt ? "pt" : Fr ? "fr" : "en"), "cache=" + cacheDir, "data=" + dataDir,
+                    "lang=" + Lang, "cache=" + cacheDir, "data=" + dataDir,
                     "game=" + gameBox.Text.Trim(), "exe=" + (exeChoice ?? ""), "mode=" + modeIndex,
                     "panel=" + b(panelBox), "borderless=" + b(borderlessBox), "fps60=" + b(fps60Box), "reserve=" + b(reserveBox),
                     "smooth=" + b(smoothBox), "quality=" + b(qualityBox), "faces=" + b(facesBox), "loading=" + b(loadingBox), "fights=" + b(fightsBox), "warm=" + b(warmBox), "cpu=" + b(cpuBox), "output=" + (outputBox == null ? 0 : outputBox.SelectedIndex),
