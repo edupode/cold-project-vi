@@ -19,6 +19,11 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.21",
+            "  •  Automatic settings for your PC each time the launcher opens (your own choices are kept).",
+            "  •  Untested options are marked EXPERIMENTAL and never turned on by themselves.",
+            "  •  Players' PCs loads again, with the median FPS of each graphics card.",
+            "",
             "IN 0.3.20",
             "  •  Names the missing game file (a DLL of the game) instead of only 'code 1'; AMD cards stay on their engine.",
             "",
@@ -115,6 +120,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.21",
+            "  •  Definicoes automaticas para o teu PC sempre que o launcher abre (as tuas escolhas ficam).",
+            "  •  Opcoes nao testadas marcadas EXPERIMENTAL, e nunca ligam sozinhas.",
+            "  •  PCs dos jogadores volta a carregar, com a mediana de FPS de cada placa.",
+            "",
             "NA 0.3.20",
             "  •  Diz que ficheiro do jogo falta (uma DLL do jogo) em vez de so 'codigo 1'; as AMD ficam no seu motor.",
             "",
@@ -211,6 +221,11 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.21",
+            "  •  Réglages automatiques pour ton PC à chaque ouverture (tes propres choix sont gardés).",
+            "  •  Les options non testées sont marquées EXPÉRIMENTAL et ne s'activent jamais seules.",
+            "  •  PC des joueurs se charge de nouveau, avec les FPS médians de chaque carte.",
+            "",
             "DANS LA 0.3.20",
             "  •  Nomme le fichier du jeu manquant (une DLL du jeu) au lieu de « code 1 » ; les AMD gardent leur moteur.",
             "",

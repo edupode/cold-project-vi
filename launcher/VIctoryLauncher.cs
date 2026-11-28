@@ -642,6 +642,7 @@ namespace VIctoryLauncher
             var page = Page();
             const int X = 40, W = 900;
             Theme.TestedText = L("Tested", "Testado", "Testé");
+            Theme.ExperimentalText = L("Experimental", "Experimental", "Expérimental");
 
             // The poster: Julia's Launcher and the build along the top rule, the headline, one sentence, PLAY and
             // Setup, the readiness steps as milestone chips on the rings, the hardware along the bottom rule
@@ -746,7 +747,7 @@ namespace VIctoryLauncher
                 // Seven presets and six 12 px gaps fill exactly W (the last one reaches the right edge).
                 int cl = (int)Math.Round(i * (W + 12) / 7.0), cr = (int)Math.Round((i + 1) * (W + 12) / 7.0) - 12;
                 var c = new ModeCard { Title = modes[k].Name, Tag2 = modes[k].Tag, Line = modes[k].Short, Location = new Point(X + cl, y), Size = new Size(cr - cl, 78), Tag = k };
-                c.Click += (s, e) => { SelectMode(k); if (k == ModeCustom) Show(PageCustom); };
+                c.Click += (s, e) => { ManualChoice(); SelectMode(k); if (k == ModeCustom) Show(PageCustom); };
                 cards.Add(c);
                 page.Controls.Add(c);
             }
@@ -757,8 +758,8 @@ namespace VIctoryLauncher
 
             // Launch options: three columns of flat rows (title, one muted line, the switch), a hairline between rows.
             page.Controls.Add(new Heading(L("Launch options", "Opcoes de arranque", "Options de lancement")) { Location = new Point(X, y), Width = W - 370, Hair = false });
-            var best = new Pill { Text = L("Reset to recommended", "Repor o recomendado", "Revenir au recommandé"), Location = new Point(X + W - 354, y - 3), Size = new Size(200, 32) };
-            best.Click += (s, e) => Recommended();
+            var best = new Pill { Text = L("Automatic for this PC", "Automatico para este PC", "Automatique pour ce PC"), Location = new Point(X + W - 354, y - 3), Size = new Size(200, 32) };
+            best.Click += (s, e) => { WriteSetting("auto", "1"); AutoBest(true); };
             page.Controls.Add(best);
             var tweaks = new Pill { Text = L("Advanced Tweaks", "Ajustes avancados", "Réglages avancés"), Location = new Point(X + W - 146, y - 3), Size = new Size(146, 32) };
             tweaks.Click += (s, e) => Show(PageCustom);
@@ -777,23 +778,25 @@ namespace VIctoryLauncher
             Func<string, string, int, int, bool, CheckBox> T = (title, line, col, row, on) => {
                 var t = new OptionCard { Text = title, Line = line, Checked = on, Location = new Point(X + colLeft(col), y + row * 70), Size = new Size(colLeft(col + 1) - colLeft(col) - 28, 70) };
                 t.CheckedChanged += (s, e) => Refresh2();
+                // A click (mouse or keyboard) is the player's own choice; the launcher setting it is not.
+                t.Click += (s, e) => ManualChoice();
                 page.Controls.Add(t);
                 return t;
             };
             borderlessBox = T(L("★ Borderless Fullscreen", "★ Ecra inteiro sem bordas"), L("Native desktop presentation", "Apresentacao nativa no ambiente de trabalho"), 0, 0, true);
             fps60Box = T(L("★ Unlock 60 FPS Clock", "★ Desbloquear relogio de 60 FPS"), L("Decoupled simulation tick (no 30 FPS cap)", "Tick de simulacao separado (sem limite de 30 FPS)"), 0, 1, true);
             panelBox = T(L("★ Diagnostics Overlay (F3)", "★ Overlay de diagnostico (F3)"), L("FPS, frame time, VRAM & RAM", "FPS, tempo de frame, VRAM e RAM"), 0, 2, true);
-            smoothBox = T(L("Frame generation", "Geracao de frames"), FrameGenLine(), 0, 3, true);
-            reserveBox = T(L("Keep the most video memory", "Guardar o maximo de VRAM"), L("Windows reserves video memory for the game", "O Windows reserva VRAM para o jogo"), 1, 0, true);
+            smoothBox = T(FgTitle(), FrameGenLine(), 0, 3, true);
+            reserveBox = T(L("◇ Keep the most video memory", "◇ Guardar o maximo de VRAM"), L("Windows reserves video memory for the game", "O Windows reserva VRAM para o jogo"), 1, 0, true);
             cpuBox = T(L("★ More CPU cores", "★ Mais nucleos do processador"), L("Half the cores copy the game's memory (+1 FPS)", "Metade dos nucleos copia a memoria do jogo (+1 FPS)"), 1, 1, true);
-            warmBox = T(L("Load pipelines before the game", "Carregar pipelines antes do jogo"), L("No stutter the first time you see a place", "Sem engasgos a primeira vez que ves um sitio"), 1, 2, true);
+            warmBox = T(L("◇ Load pipelines before the game", "◇ Carregar pipelines antes do jogo"), L("No stutter the first time you see a place", "Sem engasgos a primeira vez que ves um sitio"), 1, 2, true);
             fightsBox = T(L("★ Crowds and fights", "★ Multidoes e lutas"), L("2 GB of the game's buffers on the card", "2 GB dos buffers do jogo na placa"), 1, 3, true);
             // Anti-stretch is off for everyone and hidden since 0.3.14 (it turned the picture cyan and dark): the
             // box stays for the code that reads it, out of sight, and the picture fixes move up into its place.
             qualityBox = T(L("Anti-stretch", "Anti-esticados"), L("Fewer stretched bodies; several FPS slower", "Menos corpos esticados; varios FPS mais lento"), 2, 3, false);
             qualityBox.Visible = false;
-            facesBox = T(L("Rainbow-face fix", "Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 2, 0, false);
-            loadingBox = T(L("Fast loading (experimental)", "Carregamento rapido (experimental)"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 2, 1, false);
+            facesBox = T(L("◇ Rainbow-face fix", "◇ Correcao das caras arco-iris"), L("Textures finish uploading first; costs FPS", "Texturas acabam de subir primeiro; custa FPS"), 2, 0, false);
+            loadingBox = T(L("◇ Fast loading", "◇ Carregamento rapido"), L("Shorter loading pauses; untested", "Pausas de carregamento mais curtas; nao testado"), 2, 1, false);
             y += 4 * 70 + 14;
             // Which frame generation, when the switch above is on.
             page.Controls.Add(new Label { Text = L("Frame generation engine", "Motor de geracao de frames", "Moteur de génération d'images"), Location = new Point(X, y + 6), AutoSize = true, ForeColor = Theme.Soft, BackColor = Theme.Back, Font = Theme.Ui(9.5f) });
@@ -883,17 +886,60 @@ namespace VIctoryLauncher
 
         // The setup that worked on edupode's PC: 720p with light textures, borderless (test A), 60 FPS clock, overlay;
         // plus the new video-memory reserve and Smooth Motion.
-        void Recommended()
+        void Recommended(bool say = true)
         {
             SelectMode(0);
             panelBox.Checked = true; borderlessBox.Checked = true; fps60Box.Checked = true; reserveBox.Checked = true;
             smoothBox.Checked = rtxFrameGen;
             fightsBox.Checked = !integratedOnly && vramGb >= 11; cpuBox.Checked = true; qualityBox.Checked = false; facesBox.Checked = false; loadingBox.Checked = false; warmBox.Checked = true;
-            Log(L("Recommended setup (= the TUDO + lutas shortcut): Recommended 720p, overlay, borderless, 60 FPS clock, 2 GB of buffers for crowds, video memory reserve" + (rtxFrameGen ? ", Smooth Motion." : "."),
+            if (say) Log(L("Recommended setup (= the TUDO + lutas shortcut): Recommended 720p, overlay, borderless, 60 FPS clock, 2 GB of buffers for crowds, video memory reserve" + (rtxFrameGen ? ", Smooth Motion." : "."),
                   "Configuracao recomendada (= atalho TUDO + lutas): Recomendado 720p, overlay, sem bordas, relogio de 60 FPS, 2 GB de buffers para multidoes, reserva de VRAM" + (rtxFrameGen ? ", Smooth Motion." : "."),
                   "Réglages recommandés (= raccourci TUDO + lutas) : Recommandé 720p, overlay, sans bordure, horloge à 60 FPS, 2 Go de buffers pour les foules, réserve de VRAM" + (rtxFrameGen ? ", Smooth Motion." : ".")));
             // Integrated graphics: the lightest setup, nothing that costs memory it does not have.
             if (integratedOnly) { SelectMode(ModeUltraLow); fps60Box.Checked = false; smoothBox.Checked = false; fightsBox.Checked = false; }
+        }
+
+        // Automatic settings (launcher.ini auto, on unless the player chose something): every time the launcher
+        // opens, the preset this PC's card and memory hold best, the tested options, and the frame generation that is
+        // tested on this card (NVIDIA Smooth Motion on an RTX 40/50; the experimental ones are never turned on by
+        // themselves). A preset, an option or a frame generation the player picks turns it off; "Automatic for this
+        // PC" turns it on again.
+        bool AutoOn { get { return ReadSetting("auto") != "0"; } }
+
+        void ManualChoice()
+        {
+            if (!AutoOn) return;
+            WriteSetting("auto", "0");
+            Log(L("Your own settings from now on (\"Automatic for this PC\" brings the automatic ones back).",
+                  "As tuas definicoes a partir de agora (\"Automatico para este PC\" repoe as automaticas).",
+                  "Tes propres réglages désormais (« Automatique pour ce PC » rétablit les automatiques)."));
+        }
+
+        // The preset for this PC: the lightest for integrated graphics, 16 GB of RAM or 6 GB of video memory or less;
+        // Modest PC under 10 GB of video memory or 24 GB of RAM; else Recommended.
+        int BestMode()
+        {
+            if (integratedOnly || (ramGb > 0 && ramGb <= 16.5) || (vramGb > 0 && vramGb <= 6.5)) return ModeUltraLow;
+            if ((vramGb > 0 && vramGb < 10) || (ramGb > 0 && ramGb < 24)) return 2;
+            return 0;
+        }
+
+        void AutoBest(bool loud)
+        {
+            Recommended(false);
+            SelectMode(BestMode());
+            if (FgChoice != "auto") { WriteSetting("fg_engine", "auto"); rtxFrameGen = canSmooth; FillFgBox(); }
+            // Only the tested frame generation goes on by itself.
+            smoothBox.Checked = rtxFrameGen && !integratedOnly;
+            UpdateFgCard();
+            SaveSettings();
+            UpdateBanner(); Refresh2();
+            if (loud || ReadSetting("auto_said") != Selected.Name)
+            {
+                WriteSetting("auto_said", Selected.Name);
+                Log(string.Format(L("Automatic settings for this PC: {0}{1}, tested options only.", "Definicoes automaticas para este PC: {0}{1}, so opcoes testadas.", "Réglages automatiques pour ce PC : {0}{1}, options testées seulement."),
+                    Selected.Name, rtxFrameGen ? ", NVIDIA Smooth Motion" : ""));
+            }
         }
 
         void SelectMode(int k)
@@ -1724,7 +1770,7 @@ namespace VIctoryLauncher
             fact(L("Frame generation", "Geracao de frames", "Génération d'images"), fgText, Theme.Muted);
             fact(L("Engine", "Motor", "Moteur"), UseAmdEngine ? "AMD · Belobug" : L("Standard", "Padrao", "Standard"), UseAmdEngine ? Theme.Cyan : Theme.Muted);
             var fg = smoothBox as OptionCard;
-            if (fg != null) { fg.Line = FrameGenLine(); fg.Enabled = FrameGenAvailable; fg.Invalidate(); }
+            if (fg != null) { fg.Text = FgTitle(); fg.Line = FrameGenLine(); fg.Enabled = FrameGenAvailable; fg.Invalidate(); }
             banner.FactLabels = labels.ToArray();
             banner.FactValues = values.ToArray();
             banner.FactColors = colors.ToArray();
@@ -1808,6 +1854,8 @@ namespace VIctoryLauncher
             if (modeIndex < 0)
                 SelectMode(integratedOnly || (ramGb > 0 && ramGb <= 16.5) || (vramGb > 0 && vramGb <= 6.5) ? ModeUltraLow
                     : (vramGb > 0 && vramGb < 10) || (ramGb > 0 && ramGb < 24) ? 2 : 0);
+            // Automatic settings: picked again for this PC every time the launcher opens.
+            if (AutoOn) AutoBest(false);
             UpdateBanner();
             UpdateSmooth();
         }
@@ -2289,6 +2337,8 @@ namespace VIctoryLauncher
                     }
                     if (code == RestartExitCode) code = 0;
                     SendSessionLog(log, code, started, DateTime.Now);
+                    // This game's FPS for the players' averages (sent with the hardware report, when sharing is on).
+                    KeepFps(log, started, DateTime.Now);
                     if (gameProc != p) return; // closed from the launcher (Close game, or PLAY again)
                     gameProc = null;
                     if (code != 0)

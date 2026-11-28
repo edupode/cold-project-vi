@@ -233,9 +233,9 @@ namespace VIctoryLauncher
             if (canSmooth) add("smooth", L("NVIDIA Smooth Motion (RTX 40/50)", "NVIDIA Smooth Motion (RTX 40/50)", "NVIDIA Smooth Motion (RTX 40/50)"));
             if (!UseAmdEngine && anyRtx)
                 add("dlss", olderRtx ? L("DLSS Frame Generation (RTX 20/30, with MFG Unlocker)", "DLSS Frame Generation (RTX 20/30, com o MFG Unlocker)", "DLSS Frame Generation (RTX 20/30, avec MFG Unlocker)")
-                                     : L("DLSS Frame Generation (RTX 40/50)", "DLSS Frame Generation (RTX 40/50)", "DLSS Frame Generation (RTX 40/50)"));
+                                     : L("DLSS Frame Generation (RTX 40/50, experimental)", "DLSS Frame Generation (RTX 40/50, experimental)", "DLSS Frame Generation (RTX 40/50, expérimental)"));
             if (!UseAmdEngine && !integratedOnly && anyRtx)
-                add("fsr", L("AMD FSR 3 (with DLSS upscaling)", "AMD FSR 3 (com o upscaling DLSS)", "AMD FSR 3 (avec l'upscaling DLSS)"));
+                add("fsr", L("AMD FSR 3 (with DLSS upscaling, experimental)", "AMD FSR 3 (com o upscaling DLSS, experimental)", "AMD FSR 3 (avec l'upscaling DLSS, expérimental)"));
             if (rtx30 && File.Exists(NvSmoothDll)) add("nvsmooth30", L("NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, experimental)", "NVSmooth30 (RTX 30, expérimental)"));
             if (!UseAmdEngine && !integratedOnly) add("vi", L("VIctory 2X (any card, experimental)", "VIctory 2X (qualquer placa, experimental)", "VIctory 2X (toute carte, expérimental)"));
             var i = fgKeys.IndexOf(FgChoice);
@@ -248,10 +248,10 @@ namespace VIctoryLauncher
             var key = fgKeys[fgBox.SelectedIndex];
             if (key == FgChoice) return;
             if (!AcceptVendorFrameGen(key)) { var back = fgKeys.IndexOf(FgChoice); fgBox.SelectedIndex = back < 0 ? 0 : back; return; }
+            ManualChoice();
             WriteSetting("fg_engine", key);
             rtxFrameGen = canSmooth && (key == "auto" || key == "smooth");
-            if (smoothBox is OptionCard) ((OptionCard)smoothBox).Line = FrameGenLine();
-            smoothBox.Invalidate();
+            UpdateFgCard();
             UpdateBanner(); Refresh2();
             Log(L("Frame generation: ", "Geracao de frames: ", "Génération d'images : ") + fgBox.SelectedItem);
         }
@@ -265,6 +265,20 @@ namespace VIctoryLauncher
             return integratedOnly
                 ? string.Format(L("integrated, {0:0.0} GB of its own (shares RAM)", "integrada, {0:0.0} GB proprios (partilha a RAM)", "intégrée, {0:0.0} Go à elle (partage la RAM)"), own)
                 : string.Format(L("dedicated, {0:0.0} GB of its own", "dedicada, {0:0.0} GB proprios", "dédiée, {0:0.0} Go à elle"), own);
+        }
+
+        // The frame generation card's title: tested (NVIDIA Smooth Motion on an RTX 40/50) or experimental (the rest).
+        string FgTitle()
+        {
+            return (rtxFrameGen ? "★ " : "◇ ") + L("Frame generation", "Geracao de frames", "Génération d'images");
+        }
+
+        void UpdateFgCard()
+        {
+            if (smoothBox == null) return;
+            smoothBox.Text = FgTitle();
+            if (smoothBox is OptionCard) ((OptionCard)smoothBox).Line = FrameGenLine();
+            smoothBox.Invalidate();
         }
 
         bool FrameGenAvailable { get { return rtxFrameGen || NvSmoothHere || DlssFgHere || FsrFgHere || (OwnFrameGen && !integratedOnly); } }
@@ -585,8 +599,79 @@ namespace VIctoryLauncher
             return sb.Append('"').ToString();
         }
 
-        // Exactly what the report holds: hardware and the ID, nothing else.
+        // The presets by their English names, the same whatever the launcher's language (for the averages).
+        static readonly string[] ModeKeys = { "Recommended", "Fastest", "Modest PC", "Sharp", "Classic cgbj", "Ultra Low", "Custom" };
+
+        // A game's FPS from its log: the engine's "victory_gpu::host: N fps, ..." lines every 5 seconds, the first
+        // 90 seconds left out (loading). Kept for the next hardware report only after 3 minutes or more of play:
+        // the median and the slowest 5 %, the preset, the engine and this launcher's version.
+        void KeepFps(string log, DateTime started, DateTime ended)
+        {
+            try
+            {
+                if ((ended - started).TotalMinutes < 3 || log == null || !File.Exists(log)) return;
+                var fps = new List<double>();
+                var ansi = new Regex("\x1b\\[[0-9;]*m");
+                var line = new Regex(@"victory_gpu::host:\s+([0-9]+(?:\.[0-9]+)?) fps,");
+                var stamp = new Regex(@"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)");
+                DateTime first = DateTime.MinValue;
+                using (var f = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var r = new StreamReader(f))
+                {
+                    string raw;
+                    while ((raw = r.ReadLine()) != null)
+                    {
+                        if (raw.IndexOf(" fps,", StringComparison.Ordinal) < 0) continue;
+                        var l = ansi.Replace(raw, "");
+                        var m = line.Match(l);
+                        if (!m.Success) continue;
+                        var t = stamp.Match(l);
+                        DateTime at;
+                        if (t.Success && DateTime.TryParse(t.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out at))
+                        {
+                            if (first == DateTime.MinValue) first = at;
+                            if ((at - first).TotalSeconds < 90) continue;
+                        }
+                        double v;
+                        if (double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) && v > 0 && v < 1000) fps.Add(v);
+                    }
+                }
+                if (fps.Count < 12) return; // under a minute of measured play
+                fps.Sort();
+                double median = fps[fps.Count / 2], low = fps[(int)(fps.Count * 0.05)];
+                var inv = System.Globalization.CultureInfo.InvariantCulture;
+                WriteSetting("fps_median", median.ToString("0.0", inv));
+                WriteSetting("fps_low", low.ToString("0.0", inv));
+                WriteSetting("fps_minutes", Math.Round((ended - started).TotalMinutes).ToString(inv));
+                WriteSetting("fps_preset", modeIndex >= 0 && modeIndex < ModeKeys.Length ? ModeKeys[modeIndex] : "Recommended");
+                WriteSetting("fps_engine", UseAmdEngine ? "amd" : (ReadSetting("engine") ?? "edupode"));
+                WriteSetting("fps_version", Updater.Version);
+                // Sent with the next hardware report, even on a day one was already sent.
+                WriteSetting("share_sent", "");
+                Log(string.Format(inv, L("This game: {0:0.0} FPS median, {1:0.0} in the slowest 5 %.", "Este jogo: {0:0.0} FPS de mediana, {1:0.0} nos 5 % mais lentos.", "Cette partie : {0:0.0} FPS médians, {1:0.0} dans les 5 % les plus lents."), median, low));
+            }
+            catch (Exception) { }
+        }
+
+        // The FPS part of the report: the last game kept by KeepFps, or nothing.
+        string FpsJson()
+        {
+            var median = ReadSetting("fps_median");
+            if (string.IsNullOrEmpty(median)) return "";
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            Func<string, string> num = k => { double v; return double.TryParse(ReadSetting(k), System.Globalization.NumberStyles.Float, inv, out v) && v >= 0 && v <= 1000 ? v.ToString("0.0", inv) : "0"; };
+            Func<string, string> str = k => { var v = ReadSetting(k) ?? ""; return Json(v.Length > 40 ? v.Substring(0, 40) : v); };
+            return ",\n  \"fps_median\": " + num("fps_median") + ",\n  \"fps_low\": " + num("fps_low") + ",\n  \"fps_minutes\": " + num("fps_minutes")
+                + ",\n  \"fps_preset\": " + str("fps_preset") + ",\n  \"fps_engine\": " + str("fps_engine") + ",\n  \"fps_version\": " + str("fps_version");
+        }
+
+        // Exactly what the report holds: hardware and the ID, nothing else (and the last game's FPS, FpsJson).
         static string HardwareJson(HardwareInfo h)
+        {
+            return HardwareJson(h, "");
+        }
+
+        static string HardwareJson(HardwareInfo h, string fps)
         {
             return "{\n"
                 + "  \"schema\": 1,\n"
@@ -605,7 +690,7 @@ namespace VIctoryLauncher
                 + "  \"board\": " + Json(h.Board) + ",\n"
                 + "  \"os\": " + Json(h.Os) + ",\n"
                 + "  \"disk\": " + Json(h.Disk) + ",\n"
-                + "  \"laptop\": " + (h.Laptop ? "true" : "false") + "\n"
+                + "  \"laptop\": " + (h.Laptop ? "true" : "false") + fps + "\n"
                 + "}";
         }
 
@@ -648,7 +733,7 @@ namespace VIctoryLauncher
                     req.UserAgent = "Julias-Launcher";
                     req.Timeout = 15000;
                     req.Headers["X-VI-Secret"] = secret;
-                    var body = Encoding.UTF8.GetBytes(HardwareJson(h));
+                    var body = Encoding.UTF8.GetBytes(HardwareJson(h, FpsJson()));
                     req.ContentLength = body.Length;
                     using (var s = req.GetRequestStream()) s.Write(body, 0, body.Length);
                     using (var r = (HttpWebResponse)req.GetResponse())
@@ -1002,7 +1087,7 @@ namespace VIctoryLauncher
                         });
                         GrowTo(hwText, hwText.Fit());
                         hwText.Invalidate();
-                        hwJson.Text = HardwareJson(h).Replace("\n", "\r\n");
+                        hwJson.Text = HardwareJson(h, FpsJson()).Replace("\n", "\r\n");
                         shareStatus.Text = HardwareEndpoint.Length == 0
                             ? L("The database is not online yet: nothing is sent, even with sharing on.", "A base de dados ainda nao esta online: nada e enviado, mesmo com a partilha ligada.")
                             : !shareBox.Checked ? L("Off: nothing is sent.", "Desligado: nada e enviado.")

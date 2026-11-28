@@ -1,4 +1,6 @@
-Julia's Launcher 0.3.20: diz que ficheiro do jogo falta.
+Julia's Launcher 0.3.21: definições automáticas para o teu PC, opções experimentais marcadas, FPS dos PCs dos jogadores.
 
-- Quando falta na pasta do jogo uma das DLLs do próprio jogo (amd_fidelityfx_loader_xbox.dll, bink2scarlett.dll, libhttpclient.gdk.dll ou xboxbvhbuilder.dll), o launcher diz agora qual antes do JOGAR, e outra vez se o jogo fechar por causa disso, em vez de só "codigo 1". Copia o ficheiro em falta do pacote completo do jogo para junto do .exe do jogo.
-- Um arranque assim já não conta como falha do motor: as placas AMD já não passam para o motor do Belobug por causa de um ficheiro do jogo em falta.
+- Definições automáticas: sempre que o launcher abre escolhe o preset que a tua placa e memória aguentam melhor (Ultra baixo, PC modesto ou Recomendado), só as opções testadas, e a geração de frames testada na tua placa (NVIDIA Smooth Motion numa RTX 40/50). Se escolheres um preset ou uma opção, ficam as tuas escolhas; "Automatico para este PC" repõe as automáticas.
+- Tudo o que ainda não foi testado no jogo aparece como EXPERIMENTAL (DLSS Frame Generation, FSR 3, VIctory 2X, NVSmooth30, a reserva de VRAM, as pipelines antes do jogo, a correção das caras arco-íris, o carregamento rápido). Nenhuma liga sozinha.
+- Hardware e ID: os PCs dos jogadores voltam a carregar (podiam ficar em "A ler as medias do GitHub..."), e mostram a mediana de FPS medida em cada placa.
+- Com a partilha de hardware ligada, o teu último jogo de 3 minutos ou mais junta o FPS (mediana e 5 % mais lentos, preset, motor) a essas médias. Nada mais é enviado; o relatório em Hardware e ID mostra exatamente o que vai.

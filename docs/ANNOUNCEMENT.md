@@ -1,7 +1,8 @@
-## Julia's Launcher {tag} is out 🧩
-**Fixes**
-🧩 Game closes at once with "code 1"? The launcher now **names the missing game file** (for example amd_fidelityfx_loader_xbox.dll) before PLAY. Copy it from the complete game package next to the game's .exe.
-🔁 A missing game file no longer moves AMD cards to another engine.
+## Julia's Launcher {tag} is out ⚙️
+**New**
+⚙️ **Automatic settings**: the launcher picks the preset, options and frame generation that run best and most stable on your PC, every time it opens. Pick something yourself and it keeps your choice.
+🧪 Everything not tested in the game yet is now marked **EXPERIMENTAL**, and never turned on by itself.
+📊 **Players' PCs** on Hardware & ID loads again and shows the **median FPS per graphics card**, measured by the players' launchers (with hardware sharing on).
 
 **Install**
 🔄 On 0.3.x: nothing to do, it installs itself within 5 minutes while the game is closed.

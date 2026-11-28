@@ -52,6 +52,8 @@ e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
   "Nao verificado" em vez de "Nao preciso" quando uma verificação falha; o log de cada jogo lista as definições usadas e quais o F1 mudou.
 - **Ficheiros do jogo em falta (0.3.20):** o launcher diz que DLL do jogo falta (ex.: amd_fidelityfx_loader_xbox.dll)
   antes do JOGAR em vez de só "codigo 1", e um arranque assim já não passa as placas AMD para outro motor.
+- **Launcher (0.3.21):** definições automáticas para cada PC sempre que abre (preset, opções testadas, a geração
+  de frames testada nessa placa); opções não testadas marcadas EXPERIMENTAL; PCs dos jogadores mostra a mediana de FPS por placa.
 - **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
 - **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
   `victory.exe` novo aquece e arranca de novo uma vez, sozinho.

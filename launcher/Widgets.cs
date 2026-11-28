@@ -281,6 +281,7 @@ namespace VIctoryLauncher
 
         // The badge an option tested by the developers shows (set to the form's language).
         public static string TestedText = "Tested";
+        public static string ExperimentalText = "Experimental";
 
         // A keyboard focus ring (Tab) just inside a control's edge.
         public static void FocusRing(Graphics g, RectangleF r, float radius, Color c)
@@ -694,16 +695,25 @@ namespace VIctoryLauncher
             Toggle.DrawSwitch(g, new RectangleF(Width - sw - 4, (int)((Height - 1 - 22) / 2), sw, 22), kn.V, h, Enabled, d);
             var title = Text ?? "";
             bool tested = title.StartsWith("★");
+            // "◇": not tested in the game yet, marked EXPERIMENTAL in the warning colour.
+            bool trial = !tested && title.StartsWith("◇");
             if (tested) title = title.TrimStart('★', ' ');
+            if (trial) title = title.TrimStart('◇', ' ');
             float textW = Math.Max(20, Width - sw - 4 - 16);
             using (var b = new SolidBrush(Enabled ? Theme.Text : Theme.Dim))
             using (var f = new StringFormat(StringFormat.GenericTypographic) { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap, LineAlignment = StringAlignment.Near, HotkeyPrefix = System.Drawing.Text.HotkeyPrefix.None })
             using (var tf = Theme.UiBold(6.75f))
             {
-                string mark = tested ? Theme.TestedText.ToUpperInvariant() : "";
-                float markW = tested ? Theme.TrackedWidth(g, mark, tf, 1.1f) + 14 : 0;
+                string mark = tested ? Theme.TestedText.ToUpperInvariant() : trial ? Theme.ExperimentalText.ToUpperInvariant() : "";
+                float markW = tested || trial ? Theme.TrackedWidth(g, mark, tf, 1.1f) + 14 : 0;
                 float tw = Math.Min(Theme.TextW(g, title, Font), textW - markW);
                 g.DrawString(title, Font, b, new RectangleF(2, 10, Math.Max(10, tw + 2), 22), f);
+                if (trial && Enabled)
+                {
+                    float mx = 2 + tw + 9;
+                    using (var db = new SolidBrush(Theme.Warn)) g.FillEllipse(db, mx, 15.5f, 5, 5);
+                    using (var mb = new SolidBrush(Theme.Warn)) Theme.Tracked(g, mark, tf, mb, mx + 10, 14, 1.1f);
+                }
                 if (tested && Enabled)
                 {
                     // The tested mark: a small butter dot and the word in the eyebrow style.

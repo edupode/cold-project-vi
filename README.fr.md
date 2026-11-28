@@ -53,6 +53,8 @@ du jeu n'est inclus.**
   l'installation affiche « Non vérifié » au lieu de « Inutile » quand une vérification échoue ; le journal de chaque partie liste les réglages utilisés et ceux changés par F1.
 - **Fichiers du jeu manquants (0.3.20) :** le lanceur nomme la DLL du jeu manquante (ex. amd_fidelityfx_loader_xbox.dll)
   avant JOUER au lieu d'un simple « code 1 », et un tel lancement ne fait plus passer les cartes AMD sur un autre moteur.
+- **Lanceur (0.3.21) :** réglages automatiques pour chaque PC à chaque ouverture (préréglage, options testées, la
+  génération d'images testée sur cette carte) ; options non testées marquées EXPÉRIMENTAL ; PC des joueurs affiche les FPS médians par carte.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

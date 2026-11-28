@@ -1,9 +1,10 @@
-## Julia's Launcher 0.3.20 já saiu 🧩
+## Julia's Launcher 0.3.21 já saiu ⚙️
 
-**Correções**
-🧩 O jogo fecha logo com "codigo 1"? O launcher agora **diz que ficheiro do jogo falta** (por exemplo amd_fidelityfx_loader_xbox.dll) antes do JOGAR. Copia-o do pacote completo do jogo para junto do .exe do jogo.
-🔁 Um ficheiro do jogo em falta já não passa as placas AMD para outro motor.
+**Novo**
+⚙️ **Definições automáticas**: o launcher escolhe o preset, as opções e a geração de frames que correm melhor e mais estáveis no teu PC, sempre que abre. Se escolheres algo tu, fica a tua escolha.
+🧪 Tudo o que ainda não foi testado no jogo aparece agora como **EXPERIMENTAL**, e nunca liga sozinho.
+📊 **PCs dos jogadores** em Hardware e ID volta a carregar e mostra a **mediana de FPS por placa**, medida pelos launchers dos jogadores (com a partilha de hardware ligada).
 
 **Instalar**
 🔄 Na 0.3.x: nada a fazer, instala-se sozinha em 5 minutos com o jogo fechado.
-📥 Novo ou com um launcher antigo: descarrega o **VI-Setup-0.3.20.exe** em https://github.com/felicienradio/cold-project-vi/releases/latest e abre-o.
+📥 Novo ou com um launcher antigo: descarrega o **VI-Setup-0.3.21.exe** em https://github.com/felicienradio/cold-project-vi/releases/latest e abre-o.
