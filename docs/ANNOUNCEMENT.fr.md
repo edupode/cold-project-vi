@@ -1,16 +1,17 @@
-## Julia's Launcher 0.3.16 est sortie ☀️
-
-**Correctifs**
-☀️ Le soleil est de nouveau **blanc**, fini le disque noir dans le ciel. Le reste de l'image reste comme avant.
-🧰 **Rust et les C++ Build Tools ne sont plus demandés** quand rien n'est à compiler. Pour jouer, ils ne sont jamais nécessaires.
-🧭 Quand **Jouer** est grisé, le bouton dit pourquoi, et l'installation ne reste plus bloquée « occupée » après une étape ratée.
-📟 Le panneau F3 ne coupe plus sa dernière ligne.
+## Julia's Launcher 0.3.17 est sortie 🎞️
 
 **Nouveau**
-🎞️ Choisis ta **génération d'images** dans la page Jouer : Automatique, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30, expérimental) ou VIctory 2X (toute carte, expérimental). Le panneau F3 montre laquelle tourne.
+🤝 Le fork **VIctory-NVIDIA** est intégré (merci trustno1-coder et ses contributeurs) : DLSS Frame Generation et génération d'images AMD FSR 3, la limite de 30 fps du jeu levée, l'eau sans blocs sombres, manettes PS4/PS5, Windows 10 pris en charge.
+🎞️ Plus de choix de **génération d'images** dans Jouer : Automatique, NVIDIA Smooth Motion, DLSS Frame Generation (RTX 40/50, RTX 20/30 avec MFG Unlocker), FSR 3 (RTX) ou VIctory 2X.
+⚙️ Un nouveau **menu F1** : sections, ce que fait chaque réglage, partage de sauvegardes ; le DLSS et le multiplicateur de génération d'images s'y changent.
+🎨 **Thèmes** du launcher : Plum, Midnight, Vice, Graphite, Daylight.
 
-⏳ Les shaders sont préparés une fois de plus après cette mise à jour (le traducteur a changé pour le soleil).
+**Correctifs**
+🔊 Les télés, les appels et la réverbération s'entendent.
+🧱 Moins de crashs liés aux envois, et un nouveau victory.exe se prépare et redémarre une fois tout seul.
+
+⏳ Les shaders peuvent être préparés une fois de plus après cette mise à jour.
 
 **Installation**
 🔄 En 0.3.x : rien à faire, elle s'installe toute seule dans les 5 minutes, jeu fermé.
-📥 Nouveau ou sur un ancien launcher : télécharge **VI-Setup-0.3.16.exe** sur https://github.com/felicienradio/cold-project-vi/releases/latest et lance-le.
+📥 Nouveau ou sur un ancien launcher : télécharge **VI-Setup-0.3.17.exe** sur https://github.com/felicienradio/cold-project-vi/releases/latest et lance-le.

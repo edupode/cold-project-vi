@@ -19,6 +19,13 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.17",
+            "  •  The VIctory-NVIDIA fork is merged in: DLSS Frame Generation and FSR 3, the 30 fps limit lifted, open water",
+            "     without dark blocks, PS4/PS5 pads, Windows 10 support.",
+            "  •  More frame generation on Play: Automatic, Smooth Motion, DLSS Frame Generation, FSR 3 (RTX) or VIctory 2X.",
+            "  •  A new F1 menu (sections, save sharing); DLSS and the frame generation multiplier change there.",
+            "  •  Themes: Plum, Midnight, Vice, Graphite, Daylight. TVs, calls and reverb are heard. Fewer upload crashes.",
+            "",
             "IN 0.3.16",
             "  •  The sun is white again: it showed as a black disc in the sky. The rest of the picture stays as it is.",
             "  •  Pick your frame generation on Play: Automatic, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30)",
@@ -97,6 +104,13 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.17",
+            "  •  O fork VIctory-NVIDIA esta incluido: DLSS Frame Generation e FSR 3, limite de 30 fps levantado, agua sem",
+            "     blocos escuros, comandos PS4/PS5, suporte ao Windows 10.",
+            "  •  Mais geracao de frames em Jogar: Automatico, Smooth Motion, DLSS Frame Generation, FSR 3 (RTX) ou VIctory 2X.",
+            "  •  Um menu F1 novo (seccoes, partilha de saves); o DLSS e o multiplicador da geracao de frames mudam-se la.",
+            "  •  Temas: Plum, Midnight, Vice, Graphite, Daylight. Televisoes, chamadas e reverberacao ouvem-se. Menos crashes.",
+            "",
             "NA 0.3.16",
             "  •  O sol volta a ser branco: aparecia como um disco preto no ceu. O resto da imagem fica como esta.",
             "  •  Escolhe a geracao de frames em Jogar: Automatico, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30)",
@@ -175,6 +189,13 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.17",
+            "  •  Le fork VIctory-NVIDIA est intégré : DLSS Frame Generation et FSR 3, limite de 30 fps levée, eau sans",
+            "     blocs sombres, manettes PS4/PS5, Windows 10 pris en charge.",
+            "  •  Plus de génération d'images dans Jouer : Automatique, Smooth Motion, DLSS Frame Generation, FSR 3 (RTX) ou VIctory 2X.",
+            "  •  Un nouveau menu F1 (sections, partage de sauvegardes) ; le DLSS et le multiplicateur s'y changent.",
+            "  •  Thèmes : Plum, Midnight, Vice, Graphite, Daylight. Télés, appels et réverbération s'entendent. Moins de crashs.",
+            "",
             "DANS LA 0.3.16",
             "  •  Le soleil est de nouveau blanc : il apparaissait comme un disque noir. Le reste de l'image ne change pas.",
             "  •  Choisis ta génération d'images dans Jouer : Automatique, NVIDIA Smooth Motion (RTX 40/50), NVSmooth30",

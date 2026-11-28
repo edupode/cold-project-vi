@@ -1,8 +1,10 @@
-Julia's Launcher 0.3.16: o sol volta a ser branco, e escolhes a tua geração de frames.
+Julia's Launcher 0.3.17: o fork VIctory-NVIDIA junta-se, mais escolhas de geração de frames e um menu F1 novo.
 
-- O sol volta a aparecer branco em vez de um disco preto no céu. Só as cores que um pixel escreve são seguradas (a tentativa da 0.3.12 segurava tudo e deixou a imagem verde-azulada): testado no jogo, o resto da imagem não muda.
-- Motor de geração de frames na página Jogar: Automático (o melhor da tua placa), NVIDIA Smooth Motion (RTX 40/50), NVSmooth30 (RTX 30, experimental) ou VIctory 2X (qualquer placa, experimental). A linha FRAME GEN do painel F3 diz qual corre, e o painel já não corta a última linha.
-- Quando Jogar está cinzento, o botão diz agora porquê: o Preparar ainda a trabalhar, nenhum jogo escolhido, ou sem motor.
-- O Preparar já não fica ocupado (Jogar cinzento) quando um dos passos falha.
-- O Rust e o C++ Build Tools só são pedidos enquanto um motor ainda tem de ser compilado (o motor AMD do Belobug, antes da primeira compilação): eram pedidos outra vez depois de um update, mesmo instalados. O Rust também é encontrado no CARGO_HOME, e as ferramentas C++ de um Visual Studio em pré-visualização contam. Jogar uma release nunca precisa deles.
-- Os shaders são preparados mais uma vez: o tradutor de shaders mudou por causa do sol.
+- O fork VIctory-NVIDIA (trustno1-coder e quem contribuiu) está incluído: DLSS Frame Generation e geração de frames AMD FSR 3 pelo NVIDIA Streamline, o limite de 30 fps do próprio jogo levantado, água aberta sem os blocos escuros, comandos PS4 e PS5, e o runtime Direct3D 12 do Windows 10.
+- Geração de frames na página Jogar: Automático, NVIDIA Smooth Motion, DLSS Frame Generation (RTX 40/50; RTX 20/30 com o MFG Unlocker, um mod de outra pessoa, descarregado só se o escolheres), FSR 3 (placas RTX, com upscaling DLSS) ou VIctory 2X. Os ficheiros da NVIDIA e da AMD vêm do GitHub deles ao JOGAR.
+- F1 no jogo: menu de definições redesenhado (secções, o que faz cada opção), partilha de saves, e reinícios que guardam as opções. O DLSS e o multiplicador da geração de frames mudam-se lá mesmo com o jogo aberto pelo launcher.
+- Temas do launcher: Plum, Midnight, Vice, Graphite e Daylight, e uma página Jogar mais limpa.
+- O primeiro arranque de um victory.exe novo aquece e recomeça uma vez, sozinho.
+- Som: televisões, chamadas e reverberação já se ouvem.
+- Menos crashes: espaço para uploads reservado no arranque, e os buffers de upload são reutilizados em vez de um novo por cópia.
+- Os shaders podem ser preparados mais uma vez: o tradutor de shaders mudou.
