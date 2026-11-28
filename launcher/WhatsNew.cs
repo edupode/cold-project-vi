@@ -19,6 +19,12 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.27",
+            "  •  More FPS on Ultra Low and Modest PC: the game's shadows and far detail made lighter (VIctory-Hydra).",
+            "  •  'Lighter game detail' gives any preset the same; Advanced Tweaks has a control for each.",
+            "  •  Recommended is now Beefy PC mode, with the game's full detail.",
+            "  •  Seven languages: Deutsch, Italiano and Русский join English, Português, Français, Español.",
+            "",
             "IN 0.3.26",
             "  •  No more closing a second in with DLSS at full resolution (DLAA runs as DLSS Quality).",
             "  •  A warning when the game's folder is incomplete, with what is missing.",
@@ -140,6 +146,12 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.27",
+            "  •  Mais FPS no Ultra baixo e no PC modesto: sombras e detalhe ao longe do jogo mais leves (VIctory-Hydra).",
+            "  •  'Detalhe do jogo mais leve' da o mesmo a qualquer preset; os Ajustes avancados tem um controlo para cada.",
+            "  •  O Recomendado passa a Beefy PC mode, com o detalhe todo do jogo.",
+            "  •  Sete linguas: Deutsch, Italiano e Русский juntam-se a English, Portugues, Francais, Español.",
+            "",
             "NA 0.3.26",
             "  •  Ja nao fecha um segundo depois de arrancar com DLSS a resolucao inteira (DLAA corre como Qualidade).",
             "  •  Um aviso quando a pasta do jogo esta incompleta, com o que falta.",
@@ -261,6 +273,12 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.27",
+            "  •  Plus de FPS en Ultra bas et PC modeste : ombres et détails lointains du jeu allégés (VIctory-Hydra).",
+            "  •  « Détails du jeu plus légers » donne la même chose à tout préréglage ; Réglages avancés a un contrôle pour chacun.",
+            "  •  Recommandé devient Beefy PC mode, avec tous les détails du jeu.",
+            "  •  Sept langues : Deutsch, Italiano et Русский rejoignent English, Português, Français, Español.",
+            "",
             "DANS LA 0.3.26",
             "  •  Ne se ferme plus une seconde après le démarrage avec le DLSS en pleine résolution (DLAA en Qualité).",
             "  •  Un avertissement quand le dossier du jeu est incomplet, avec ce qui manque.",

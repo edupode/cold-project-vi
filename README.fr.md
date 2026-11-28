@@ -65,6 +65,8 @@ du jeu n'est inclus.**
   rapports listent le dossier du jeu (noms et tailles) et le résumé de chaque partie a une ligne à son sujet.
 - **0.3.26 :** le DLAA tourne en DLSS qualité (à la taille de l'écran le jeu manquait de mémoire de render targets et
   se fermait au bout d'une seconde) ; un avertissement pour un dossier du jeu incomplet ; un choix de langue avec l'espagnol.
+- **0.3.27 :** ombres et détails lointains du jeu allégés en Ultra bas et PC modeste (VIctory-Hydra), et sur tout
+  préréglage avec « Détails du jeu plus légers » ; Recommandé devient « Beefy PC mode » ; Deutsch, Italiano, Русский.
 - **Moins de gaspillage :** les buffers d'envoi d'une liste sont réutilisés au lieu d'un nouveau buffer par copie (environ 700 par seconde avant).
 - **Lanceur :** thèmes (Plum, Midnight, Vice, Graphite, Daylight) et une page Jouer plus nette ; le premier démarrage d'un
   nouveau `victory.exe` chauffe puis redémarre une fois, tout seul.

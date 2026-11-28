@@ -1,6 +1,9 @@
-Julia's Launcher 0.3.26: acabou a paragem ao fim de um segundo com DLSS à escala inteira, um aviso para jogo incompleto, e um seletor de língua com espanhol.
+Julia's Launcher 0.3.27: mais FPS nos presets fracos, um "Beefy PC mode", sete línguas, e o crash mais comum da 0.3.25 corrigido.
 
-- Com DLSS pedido ao tamanho do próprio ecrã (DLAA: os presets Nítido, cgbj clássico e alguns Personalizados), o jogo ficava sem a sua memória de render targets e fechava um segundo depois de arrancar. Era o crash mais comum da 0.3.25 (52 relatórios, 12 jogadores). O DLAA passa a correr como DLSS qualidade, pelo launcher e pelo menu F1 do jogo.
-- O launcher compara a pasta do jogo com o jogo completo (os 22 arquivos e a pasta data). Os quatro jogadores cuja pasta era diferente fechavam em segundos em todos os jogos; a página Jogar diz agora o que falta, e o JOGAR pergunta antes de arrancar.
-- Os botões de língua passam a ser um seletor, com espanhol. Línguas novas são ficheiros que qualquer pessoa pode acrescentar (CONTRIBUTING.md). No primeiro arranque o launcher usa a língua do Windows quando a tem.
-- As logs dos jogos são lidas pelo edupode e pela equipa do projeto (os colaboradores do repositório), e cada leitura fica registada. Quem já tinha dito que sim é perguntado mais uma vez; nada é enviado até responder. A partilha de hardware continua só do edupode.
+- Mais FPS no Ultra baixo e no PC modesto: as definições do próprio jogo ficam mais leves antes de arrancar (sombras a 1280 px; no Ultra baixo também detalhe mais perto e menos objetos pequenos ao longe), do VIctory-Hydra. Qualquer outro preset pode ter o mesmo com a nova opção "Detalhe do jogo mais leve"; os Ajustes avançados têm um controlo para cada.
+- O "Recomendado" passa a "Beefy PC mode" e mantém o detalhe todo do jogo.
+- Com DLSS ao tamanho do próprio ecrã (DLAA) o jogo ficava sem memória de render targets e fechava um segundo depois de arrancar: era o crash mais comum da 0.3.25 (52 relatórios, 12 jogadores). O DLAA corre agora como DLSS qualidade.
+- O launcher compara a pasta do jogo com o jogo completo e diz o que falta antes de jogares: todos os jogos de uma pasta incompleta fechavam em segundos.
+- Línguas: um seletor com English, Português, Français, Deutsch, Español, Italiano e Русский; no primeiro arranque, a língua do Windows. Línguas novas são ficheiros que qualquer pessoa pode acrescentar (CONTRIBUTING.md).
+- As logs dos jogos são lidas pelo edupode e pela equipa do projeto; quem já tinha dito que sim é perguntado mais uma vez, e nada é enviado até responder.
+- PCs com 16 GB podem guardar menos memória parada (VICTORY_STAGING_KEPT, VICTORY_MAX_PRELUDES).

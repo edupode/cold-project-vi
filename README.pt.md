@@ -64,6 +64,8 @@ e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
   relatórios listam a pasta do jogo (nomes e tamanhos) e o resumo de cada jogo tem uma linha sobre ela.
 - **0.3.26:** o DLAA corre como DLSS qualidade (ao tamanho do ecrã o jogo ficava sem memória de render targets e
   fechava ao fim de um segundo); um aviso para pasta do jogo incompleta; um seletor de língua com espanhol.
+- **0.3.27:** sombras e detalhe ao longe do próprio jogo mais leves no Ultra baixo e no PC modesto (VIctory-Hydra), e em
+  qualquer preset com "Detalhe do jogo mais leve"; o Recomendado passa a "Beefy PC mode"; Deutsch, Italiano, Русский.
 - **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
 - **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
   `victory.exe` novo aquece e arranca de novo uma vez, sozinho.
