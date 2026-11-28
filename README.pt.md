@@ -58,6 +58,8 @@ e muitas mudanças nossas. **Não inclui ficheiros do jogo.**
   arranques), e as definições automáticas mantêm o preset de cada PC em vez de o escolherem outra vez a cada abertura.
 - **Motor (0.3.23):** a paragem do jogo em +0x1dac734 (um componente da preparação do FidelityFX que não arrancou)
   passa a ser tratada como continuar sem ele: o jogo já não fecha ao fim de um segundo em alguns PCs; os outros nunca lá chegam.
+- **0.3.24:** um launcher fora de uma pasta de código usa sempre o victory.exe das atualizações; as paragens do jogo
+  depois de um componente não arrancar são saltadas em três sítios; logs e relatórios dizem que victory.exe arrancou.
 - **Menos desperdício:** os buffers de upload de cada lista são reaproveitados em vez de um buffer novo por cópia (cerca de 700 por segundo antes).
 - **Launcher:** temas (Plum, Midnight, Vice, Graphite, Daylight) e uma página Jogar mais limpa; o primeiro arranque de um
   `victory.exe` novo aquece e arranca de novo uma vez, sozinho.

@@ -127,6 +127,7 @@ namespace VIctoryLauncher
             sb.AppendLine("Windows: " + h.Os + "   Disk: " + h.Disk + (h.Laptop ? "   laptop" : ""));
             sb.AppendLine("Missing: " + (missing.Count == 0 ? "nothing" : string.Join(", ", missing.ToArray())));
             sb.AppendLine("Shaders cached: " + shaderFiles + (exeProblem != null ? "   Game file: " + exeProblem : ""));
+            sb.AppendLine(ExeLine());
             if (ticked.Count > 0) sb.AppendLine("Ticked: " + string.Join("; ", ticked.ToArray()));
             if (said.Length > 0) sb.AppendLine("In their words: " + said);
             summary = Scrub(sb.ToString());

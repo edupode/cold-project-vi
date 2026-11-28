@@ -185,6 +185,7 @@ namespace VIctoryLauncher
             sb.AppendLine("CPU: " + h.Cpu + "   RAM: " + h.RamGb + " GB   Board: " + h.BoardMaker + " " + h.Board);
             sb.AppendLine("Windows: " + h.Os + "   Disk: " + h.Disk + (h.Laptop ? "   laptop" : ""));
             sb.AppendLine("Shaders cached: " + shaderFiles);
+            sb.AppendLine(ExeLine());
             sb.AppendLine(string.Format("Played: {0:0.0} min   Ended: {1}", (ended - started).TotalMinutes, code == 0 ? "normally (code 0)" : "with an error (code " + code + ")"));
             return Scrub(sb.ToString()) + "\r\nOptions:\r\n" + Scrub(options);
         }

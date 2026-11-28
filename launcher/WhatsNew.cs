@@ -19,6 +19,10 @@ namespace VIctoryLauncher
     partial class LauncherForm
     {
         static readonly string[] NewEn = {
+            "IN 0.3.24",
+            "  •  Always plays the updated engine (some PCs started an older victory.exe found elsewhere).",
+            "  •  Three of the game's own 'stop' checks are stepped over (RTX 4060, RX 6500 XT, RTX 3050 laptop).",
+            "",
             "IN 0.3.23",
             "  •  The game no longer closes a second after opening on some PCs (RTX 4060, RX 6500 XT).",
             "",
@@ -127,6 +131,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewPt = {
+            "NA 0.3.24",
+            "  •  Usa sempre o motor atualizado (alguns PCs arrancavam um victory.exe mais antigo de outro sitio).",
+            "  •  Tres verificacoes de 'paragem' do jogo sao saltadas (RTX 4060, RX 6500 XT, portatil RTX 3050).",
+            "",
             "NA 0.3.23",
             "  •  O jogo ja nao fecha um segundo depois de abrir em alguns PCs (RTX 4060, RX 6500 XT).",
             "",
@@ -235,6 +243,10 @@ namespace VIctoryLauncher
         };
 
         static readonly string[] NewFr = {
+            "DANS LA 0.3.24",
+            "  •  Utilise toujours le moteur mis à jour (certains PC lançaient un victory.exe plus ancien).",
+            "  •  Trois vérifications « d'arrêt » du jeu sont passées (RTX 4060, RX 6500 XT, portable RTX 3050).",
+            "",
             "DANS LA 0.3.23",
             "  •  Le jeu ne se ferme plus une seconde après l'ouverture sur certains PC (RTX 4060, RX 6500 XT).",
             "",

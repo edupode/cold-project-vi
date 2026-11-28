@@ -48,46 +48,69 @@ const WATCHDOG: &[Patch<'static>] = &[
     },
 ];
 
-/// The title's assert after a component it found turned on did not start
-/// (a manager of components keyed by 4-byte ids, under one lock: if the first
-/// is there and on it starts it; if the second is there and on it starts it
-/// and, when that fails, executes this `int3`; then returns). Only a failed
-/// start reaches it: everyone else's run never executes this byte. On some
-/// PCs it ends every start a second in, under the title's FidelityFX setup
-/// (callers +0x221c29c, +0x2215eca; an RTX 4060 since 0.3.16 with every preset,
-/// an RX 6500 XT, 2026-11-28). [`FEATURE_ASSERT_AT`] holds its address while
-/// it is taken as "go on without that component" (`crate::crash`);
-/// `VICTORY_FEATURE_ASSERT=1` keeps the title's own stop.
-const FEATURE_ASSERT_RVA: usize = 0x1dac734;
+/// The title's asserts after one of its components did not start (a manager of
+/// components keyed by 4-byte ids, under one lock, with its routines at
+/// +0x292d0b0..+0x292d370). Each is an `int3` that only a failed start reaches,
+/// on the path that then returns from its function: everyone else's run never
+/// executes these bytes. On some PCs one of them ends every start a second in:
+/// - +0x1dac734, under the title's FidelityFX setup (callers +0x221c29c,
+///   +0x2215eca): an RTX 4060 since 0.3.16 with every preset, an RX 6500 XT;
+/// - +0x1ce6e13, after +0x292d370: an RTX 3050 laptop (4 GB) since 0.3.16;
+/// - +0x1ddf97f, a flag tested after +0x3c9020: an RX 6500 XT on Belobug's engine.
+///
+/// Each entry: the `int3`'s offset, and the bytes from `before` bytes ahead of
+/// it (its test and jump, the `int3`, the start of the epilogue), which must
+/// match exactly. [`FEATURE_ASSERTS_AT`] holds their addresses while they are
+/// taken as "go on without that component" (`crate::crash`);
+/// `VICTORY_FEATURE_ASSERT=1` keeps the title's own stops.
+const FEATURE_ASSERTS: [(usize, usize, &[u8]); 3] = [
+    // test al, al; jne +1; int3; add rsp, 28h
+    (0x1dac734, 4, &[0x84, 0xC0, 0x75, 0x01, 0xCC, 0x48]),
+    (0x1ce6e13, 4, &[0x84, 0xC0, 0x75, 0x01, 0xCC, 0x48]),
+    // cmp byte ptr [rsi], 0; jne +0xc; int3; add rsp, 0e0h
+    (0x1ddf97f, 5, &[0x80, 0x3E, 0x00, 0x75, 0x0C, 0xCC, 0x48, 0x81]),
+];
 
-/// The address of that `int3` in this process (0: not this build, or kept).
-pub(crate) static FEATURE_ASSERT_AT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+/// The addresses of those `int3`s in this process (0: not this build, or kept).
+pub(crate) static FEATURE_ASSERTS_AT: [std::sync::atomic::AtomicUsize; 3] =
+    [const { std::sync::atomic::AtomicUsize::new(0) }; 3];
 
-/// Arms [`FEATURE_ASSERT_AT`] for the 1.0.2.1 executable, when the byte there
-/// is the expected `int3` and the ones around it are the failed start's test
-/// (`test al, al; jne +1`) and the epilogue.
+/// Arms [`FEATURE_ASSERTS_AT`] for the 1.0.2.1 executable, each site whose
+/// bytes are exactly the expected ones. Returns how many.
 ///
 /// # Safety
 /// As `disarm_watchdog`.
-pub(crate) unsafe fn arm_feature_assert(base: usize, hash: &blake3::Hash) -> bool {
+pub(crate) unsafe fn arm_feature_assert(base: usize, hash: &blake3::Hash) -> usize {
     if !hash.to_hex().starts_with(BUILD_1_0_2_1) || std::env::var_os("VICTORY_FEATURE_ASSERT").is_some_and(|v| v == "1") {
-        return false;
+        return 0;
     }
-    let at = base + FEATURE_ASSERT_RVA;
-    // SAFETY: inside the mapped .text of this exact build.
-    let bytes = unsafe { std::slice::from_raw_parts((at - 4) as *const u8, 6) };
-    if !feature_assert_bytes(bytes) {
-        tracing::warn!("component start assert: the bytes are not the expected ones; the title's stop is kept");
-        return false;
+    let mut armed = 0;
+    for (i, &(rva, before, expect)) in FEATURE_ASSERTS.iter().enumerate() {
+        let at = base + rva;
+        // SAFETY: inside the mapped .text of this exact build.
+        let bytes = unsafe { std::slice::from_raw_parts((at - before) as *const u8, expect.len()) };
+        if !feature_assert_bytes(bytes, before, expect) {
+            tracing::warn!(rva = format_args!("{rva:#x}"), "component start assert: the bytes are not the expected ones; the title's stop is kept");
+            continue;
+        }
+        FEATURE_ASSERTS_AT[i].store(at, std::sync::atomic::Ordering::Relaxed);
+        armed += 1;
     }
-    FEATURE_ASSERT_AT.store(at, std::sync::atomic::Ordering::Relaxed);
-    true
+    armed
 }
 
-/// `test al, al; jne +1; int3; add rsp, ..`: the four bytes before the `int3`,
-/// the `int3`, and the first byte after it.
-fn feature_assert_bytes(bytes: &[u8]) -> bool {
-    bytes == [0x84, 0xC0, 0x75, 0x01, 0xCC, 0x48]
+/// The site's bytes as expected, with the `int3` where it should be.
+fn feature_assert_bytes(bytes: &[u8], before: usize, expect: &[u8]) -> bool {
+    bytes == expect && expect.get(before) == Some(&0xCC)
+}
+
+/// The armed site at `address` (an `int3` that raised a breakpoint), if any.
+pub(crate) fn feature_assert_at(address: usize) -> Option<usize> {
+    FEATURE_ASSERTS_AT
+        .iter()
+        .zip(FEATURE_ASSERTS.iter())
+        .find(|(at, _)| address != 0 && at.load(std::sync::atomic::Ordering::Relaxed) == address)
+        .map(|(_, &(rva, ..))| rva)
 }
 
 /// Applies the watchdog patches whose bytes match. Returns how many applied.
@@ -294,9 +317,17 @@ mod tests {
     #[test]
     fn the_component_assert_is_recognised_only_as_it_is() {
         // From the 1.0.2.1 executable at +0x1dac730: test al,al; jne +1; int3; add rsp,28h.
-        assert!(feature_assert_bytes(&[0x84, 0xC0, 0x75, 0x01, 0xCC, 0x48]));
-        assert!(!feature_assert_bytes(&[0x84, 0xC0, 0x75, 0x01, 0x90, 0x48]));
-        assert!(!feature_assert_bytes(&[0x84, 0xC0, 0x74, 0x01, 0xCC, 0x48]));
+        let (_, before, expect) = FEATURE_ASSERTS[0];
+        assert!(feature_assert_bytes(&[0x84, 0xC0, 0x75, 0x01, 0xCC, 0x48], before, expect));
+        assert!(!feature_assert_bytes(&[0x84, 0xC0, 0x75, 0x01, 0x90, 0x48], before, expect));
+        assert!(!feature_assert_bytes(&[0x84, 0xC0, 0x74, 0x01, 0xCC, 0x48], before, expect));
+        // Every entry has its int3 where it says.
+        for (rva, before, expect) in FEATURE_ASSERTS {
+            assert_eq!(expect[before], 0xCC, "{rva:#x}");
+        }
+        // Not armed: no address is taken for one.
+        assert_eq!(feature_assert_at(0x1234), None);
+        assert_eq!(feature_assert_at(0), None);
     }
 
     #[test]

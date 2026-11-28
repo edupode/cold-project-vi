@@ -83,6 +83,8 @@ included.**
   automatic settings keep each PC's preset instead of picking it again at every opening.
 - **Engine (0.3.23):** the title's stop at +0x1dac734 (a component under its FidelityFX setup that did not start)
   is taken as going on without it: the game no longer closes a second in on some PCs; others never reach it.
+- **0.3.24:** a launcher outside a source folder always plays the victory.exe its updates install; the title's
+  component-start stops are stepped over at three places; logs and reports name the victory.exe that started.
 - **Less churn:** a list's upload buffers are reused instead of one new buffer per copy (about 700 a second before).
 - **Launcher:** themes (Plum, Midnight, Vice, Graphite, Daylight) and a cleaner Play page; the first start of a new
   `victory.exe` warms up and starts again once, by itself.

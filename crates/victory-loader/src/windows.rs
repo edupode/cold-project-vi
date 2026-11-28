@@ -91,8 +91,10 @@ pub fn load(prepared: &PreparedImage, dir: &Path) -> Result<LoadedImage> {
         tracing::info!(applied, "title watchdog hooks ({})", crate::hooks::NO_WATCHDOG_ENV);
     }
     // SAFETY: just mapped, and no title code has run.
-    if unsafe { crate::hooks::arm_feature_assert(loaded.base(), &prepared.original_hash) } {
-        tracing::info!("the title's stop after a component that did not start is taken as going on without it (VICTORY_FEATURE_ASSERT=1 keeps it)");
+    // (A warning, so that players' logs say this engine runs with them.)
+    let armed = unsafe { crate::hooks::arm_feature_assert(loaded.base(), &prepared.original_hash) };
+    if armed > 0 {
+        tracing::warn!(armed, "the title's stops after a component that did not start are taken as going on without it (VICTORY_FEATURE_ASSERT=1 keeps them)");
     }
     // SAFETY: just mapped, and no title code has run.
     let levers = unsafe { crate::hooks::resolution_levers(loaded.base(), &prepared.original_hash) };

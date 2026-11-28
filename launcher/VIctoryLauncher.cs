@@ -1550,8 +1550,20 @@ namespace VIctoryLauncher
                 list.Add(Path.Combine(root, "victory.exe"));
                 list.Add(Path.Combine(AppDir, "victory.exe"));
                 // The newest first: a fresh build or a fresh update, whichever came last.
-                return list.Distinct(StringComparer.OrdinalIgnoreCase)
+                var ordered = list.Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderByDescending(p => File.Exists(p) ? File.GetLastWriteTimeUtc(p) : DateTime.MinValue).ToList();
+                // A launcher that does not run from inside a source folder (installed, or on the Desktop) plays the
+                // emulator its updates bring, whatever older builds lie in a source folder it found: on 0.3.23 an
+                // RTX 4060 kept stopping where that release's engine goes on, with its launcher updated (a source
+                // folder under %LOCALAPPDATA% and another victory.exe beside the game, 28/11/2026).
+                var updated = Path.Combine(AppDir, "victory.exe");
+                bool fromSource = src != null && (root + "\\").StartsWith(src.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
+                if (!fromSource && File.Exists(updated))
+                {
+                    ordered.RemoveAll(p => string.Equals(p, updated, StringComparison.OrdinalIgnoreCase));
+                    ordered.Insert(0, updated);
+                }
+                return ordered;
             }
         }
 
@@ -1565,6 +1577,21 @@ namespace VIctoryLauncher
                 if (File.Exists(Path.Combine(root, "victory.exe")) || File.Exists(Path.Combine(root, "unins000.exe"))) return root;
                 return Path.Combine(Path.GetDirectoryName(dataRoot), "app");
             }
+        }
+
+        // Which emulator the game starts with, for logs and reports: its path (user name taken out), size and date.
+        string ExeLine()
+        {
+            try
+            {
+                var exe = VictoryExe;
+                if (exe == null) return "victory.exe: none";
+                var f = new FileInfo(exe);
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var shown = exe.StartsWith(home, StringComparison.OrdinalIgnoreCase) ? "%USERPROFILE%" + exe.Substring(home.Length) : exe;
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture, "victory.exe: {0} ({1:N0} bytes, {2:yyyy-MM-dd HH:mm} UTC)", shown, f.Length, f.LastWriteTimeUtc);
+            }
+            catch (Exception e) { return "victory.exe: " + e.Message; }
         }
 
         // This repository's own build (the `victory gpu` probe and the tools), whatever the engine.
@@ -2200,6 +2227,7 @@ namespace VIctoryLauncher
                 var f1 = menuKeys;
                 try
                 {
+                    writer.WriteLine("# " + ExeLine());
                     writer.WriteLine("# effective settings (" + (UseAmdEngine ? "AMD engine" : "engine " + ReadSetting("engine")) + "; [F1] = changed in the game's F1 menu, over the launcher):");
                     foreach (var kv in env.Where(kv => kv.Key.StartsWith("VICTORY_")).OrderBy(kv => kv.Key, StringComparer.Ordinal))
                         writer.WriteLine("#   " + kv.Key + "=" + kv.Value + (f1.Contains(kv.Key) ? "   [F1]" : ""));
