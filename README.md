@@ -35,7 +35,7 @@
 > **This is a remake by [@edupode](https://github.com/edupode)** of the Cold Project VI idea, internally
 > called **"luz"** (Portuguese for *light*, after the lighting work it started with). It combines
 > [VIctory](https://github.com/Marvisak/VIctory), the cgbj build (cputroll/cgbj-reupload), Leonidas's and
-> AnyXboxSeries's work, the VIctory-NVIDIA fork (trustno1-coder), fxceless's rendering fixes and adaptations from an AMD fork
+> AnyXboxSeries's work, the VIctory-NVIDIA fork (trustno1-coder) and through it foxhound (readmet3xt-lab), cool_fox (codec-d) and DexNom's VIctory, fxceless's rendering fixes and adaptations from an AMD fork
 > (avatarmanz/VIctory-7900XTX), tuned and extended for an NVIDIA laptop. It is not the upstream Cold Project
 > VI (felicienradio/cold-project-vi), whose page inspired this one.
 

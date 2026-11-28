@@ -1452,11 +1452,15 @@ namespace VIctoryLauncher
                 "   •  cgbj (cputroll/cgbj-reupload) — the performance build this one starts from",
                 "   •  AnyXboxSeries — Xbox Series runtime work",
                 "   •  Leonidas — fixes and research",
-                "   •  VIctory-NVIDIA (trustno1-coder) — the lighting for NVIDIA cards",
+                "   •  VIctory-NVIDIA (trustno1-coder) and its contributors — DLSS/FSR 3 frame generation, the F1 and F3 menus, save sharing, pads, the water and the lighting for NVIDIA cards: github.com/trustno1-coder/VIctory-NVIDIA",
+                "   •  foxhound (readmet3xt-lab) — the base of the VIctory-NVIDIA code merged here: github.com/readmet3xt-lab/foxhound",
+                "   •  cool_fox (codec-d), DexNom's VIctory, victory-memory-stack (skornuta) — fixes and memory work carried in with it",
+                "   •  DueTonight and mikan123pro — tested save sharing (VIctory-NVIDIA discussion #520)",
                 "   •  fxceless — rendering and performance fixes",
                 "   •  VIctory-7900XTX (avatarmanz) — adaptations from the AMD fork",
                 "   •  VIctory-Belobug-AMD (Belobug) — the alternative engine for Radeon cards: github.com/Belobug/VIctory-Belobug-AMD",
                 "   •  NVSmooth30 (ItsAdeline) — Smooth Motion on RTX 30 cards (experimental): github.com/ItsAdeline/NVSmooth30",
+                "   •  MFG Unlocker (dashdogy, MIT) — DLSS Frame Generation on RTX 20/30, fetched only when picked: github.com/dashdogy/MFG-Unlocker",
                 "   •  Cold Project VI (felicienradio) — the project page this remake follows",
             };
         }
