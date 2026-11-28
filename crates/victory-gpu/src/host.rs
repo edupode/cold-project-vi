@@ -932,9 +932,16 @@ fn create() -> windows::core::Result<Host> {
             D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, &mut device)?;
             tracing::info!("host device on the software adapter (WARP)");
         } else {
-            match run_adapter() {
-                Some(adapter) => D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, &mut device)?,
-                None => D3D12CreateDevice(None, D3D_FEATURE_LEVEL_12_0, &mut device)?,
+            // The card the monitor is on, else the one with the most memory (or the one
+            // VICTORY_ADAPTER names), not Windows' first adapter, which is
+            // often an integrated GPU.
+            if let Some((adapter, name, own)) = victory_shader::emit::host::hardware_adapter()
+                && D3D12CreateDevice(&adapter, D3D_FEATURE_LEVEL_12_0, &mut device).is_ok()
+            {
+                tracing::info!(adapter = %name, own_memory_mb = own >> 20, "host device on the card the monitor is on, else the one with the most memory of its own (VICTORY_ADAPTER names another)");
+            }
+            if device.is_none() {
+                D3D12CreateDevice(None, D3D_FEATURE_LEVEL_12_0, &mut device)?;
             }
             // Whether a GPU hang ends the run or freezes the PC (#1054).
             crate::tdr::log();
@@ -1068,22 +1075,13 @@ impl Host {
 /// whose graphics are on is often those integrated graphics, not the card: the
 /// launcher then said "AMD card" on an NVIDIA PC and tested Resizable BAR on the
 /// wrong adapter. `VICTORY_DEFAULT_ADAPTER=1` goes back to the default.
+/// (Since the merge of VIctory-NVIDIA c1cbdc9: the card the game's device is made on,
+/// `hardware_adapter`, the one the monitor is on, so `victory gpu` reports the card that plays.)
 pub(crate) fn run_adapter() -> Option<IDXGIAdapter1> {
     if crate::switch::on("VICTORY_DEFAULT_ADAPTER") {
         return None;
     }
-    // SAFETY: plain DXGI adapter queries.
-    unsafe {
-        let factory: IDXGIFactory6 = CreateDXGIFactory2(DXGI_CREATE_FACTORY_FLAGS(0)).ok()?;
-        let adapter: IDXGIAdapter1 = factory
-            .EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE)
-            .ok()?;
-        let desc = adapter.GetDesc1().ok()?;
-        if desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32 != 0 {
-            return None;
-        }
-        Some(adapter)
-    }
+    victory_shader::emit::host::hardware_adapter().map(|(adapter, _, _)| adapter)
 }
 
 pub(crate) fn warp_adapter() -> windows::core::Result<IDXGIAdapter> {
